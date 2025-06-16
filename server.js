@@ -17,7 +17,7 @@ function getLocalIP() {
     return 'localhost';
 }
 
-const SERVER_IP = getLocalIP();
+const SERVER_IP = 'docker.server.s9s.ai';
 let SERVER_PORT = 8080;
 const SETUP_DIR = './remote-setup';
 const DEVICES_DIR = './devices';

@@ -7,137 +7,6 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Validate IP address
-is_valid_ip() {
-    local ip=$1
-    if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        IFS='.' read -ra ADDR <<< "$ip"
-        for i in "${ADDR[@]}"; do
-            if [[ $i -gt 255 ]]; then
-                return 1
-            fi
-        done
-        return 0
-    fi
-    return 1
-}
-
-# Check if IP is private/local
-is_private_ip() {
-    local ip=$1
-    # Private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8
-    if [[ $ip =~ ^10\. ]] || \
-       [[ $ip =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]] || \
-       [[ $ip =~ ^192\.168\. ]] || \
-       [[ $ip =~ ^127\. ]]; then
-        return 0
-    fi
-    return 1
-}
-
-# Smart IP detection with multiple methods
-detect_device_ip() {
-    echo "🔍 Smart IP detection starting..."
-    local detected_ip=""
-    
-    # Method 1: Try to get public IP first
-    echo "📡 Trying to get public IP..."
-    for service in "https://api.ipify.org" "https://icanhazip.com" "https://ipecho.net/plain" "http://whatismyip.akamai.com"; do
-        if command_exists curl; then
-            detected_ip=$(curl -s --connect-timeout 5 --max-time 10 "$service" 2>/dev/null | tr -d '\n\r\t ' | head -c 15)
-            if is_valid_ip "$detected_ip" && ! is_private_ip "$detected_ip"; then
-                echo "✅ Found public IP: $detected_ip"
-                echo "$detected_ip"
-                return 0
-            fi
-        fi
-    done
-    
-    # Method 2: Get IP from default route (most reliable for local)
-    echo "🌐 Trying default route method..."
-    detected_ip=$(ip route get 8.8.8.8 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}' | head -1)
-    if is_valid_ip "$detected_ip"; then
-        echo "✅ Found IP from route: $detected_ip"
-        echo "$detected_ip"
-        return 0
-    fi
-    
-    # Method 3: Enhanced hostname -I with filtering
-    echo "🏠 Trying hostname method..."
-    local ips=($(hostname -I 2>/dev/null))
-    for ip in "${ips[@]}"; do
-        if is_valid_ip "$ip" && [[ ! $ip =~ ^127\. ]] && [[ ! $ip =~ ^169\.254\. ]]; then
-            # Prefer non-private IPs
-            if ! is_private_ip "$ip"; then
-                echo "✅ Found non-private IP: $ip"
-                echo "$ip"
-                return 0
-            else
-                detected_ip="$ip"  # Keep as backup
-            fi
-        fi
-    done
-    
-    # Method 4: Parse network interfaces manually
-    echo "🔌 Trying network interfaces..."
-    local interfaces=("eth0" "ens" "enp" "wlan" "wlp")
-    for prefix in "${interfaces[@]}"; do
-        local iface=$(ip link show 2>/dev/null | grep -o "${prefix}[0-9a-z]*" | head -1)
-        if [[ -n "$iface" ]]; then
-            local iface_ip=$(ip addr show "$iface" 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1 | head -1)
-            if is_valid_ip "$iface_ip" && [[ ! $iface_ip =~ ^127\. ]]; then
-                if ! is_private_ip "$iface_ip"; then
-                    echo "✅ Found IP from interface $iface: $iface_ip"
-                    echo "$iface_ip"
-                    return 0
-                else
-                    detected_ip="$iface_ip"
-                fi
-            fi
-        fi
-    done
-    
-    # Method 5: Parse all network interfaces
-    echo "🔧 Trying all interfaces..."
-    local all_ips=$(ip addr show 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1)
-    for ip in $all_ips; do
-        if is_valid_ip "$ip" && [[ ! $ip =~ ^169\.254\. ]]; then
-            if ! is_private_ip "$ip"; then
-                echo "✅ Found non-private IP: $ip"
-                echo "$ip"
-                return 0
-            else
-                detected_ip="$ip"
-            fi
-        fi
-    done
-    
-    # Method 6: Legacy fallback
-    if [[ -z "$detected_ip" ]]; then
-        echo "🔄 Using legacy detection..."
-        detected_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-        if [[ -z "$detected_ip" ]]; then
-            detected_ip=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -1)
-        fi
-    fi
-    
-    # Final validation
-    if is_valid_ip "$detected_ip"; then
-        if is_private_ip "$detected_ip"; then
-            echo "⚠️  Using private IP: $detected_ip"
-        else
-            echo "✅ Using IP: $detected_ip"
-        fi
-        echo "$detected_ip"
-        return 0
-    fi
-    
-    # Ultimate fallback
-    echo "❌ Could not detect valid IP, using localhost"
-    echo "localhost"
-    return 1
-}
-
 echo "📋 Updating package list..."
 sudo apt-get update -y
 
@@ -183,24 +52,11 @@ fi
 sudo npm install -g pm2
 
 echo "🔌 Setting up WebSocket client..."
-
-# Use smart IP detection
-DEVICE_IP=$(detect_device_ip)
-echo "📍 Detected device IP: $DEVICE_IP"
-
-# Validate detection was successful
-if [[ "$DEVICE_IP" == "localhost" ]]; then
-    echo "⚠️  Warning: Could not detect proper IP address"
-    echo "🔧 Manual IP detection required"
-    read -p "Please enter this device's IP address: " manual_ip
-    if is_valid_ip "$manual_ip"; then
-        DEVICE_IP="$manual_ip"
-        echo "✅ Using manual IP: $DEVICE_IP"
-    else
-        echo "❌ Invalid IP address provided"
-        exit 1
-    fi
+DEVICE_IP=$(hostname -I | awk '{print $1}')
+if [ -z "$DEVICE_IP" ]; then
+    DEVICE_IP=$(ip route get 1 | awk '{print $7}' | head -1)
 fi
+echo "📍 Detected device IP: $DEVICE_IP"
 
 WS_CLIENT_DIR="/opt/docker-client"
 sudo mkdir -p $WS_CLIENT_DIR
@@ -210,40 +66,10 @@ const WebSocket = require('ws');
 const os = require('os');
 const { exec } = require('child_process');
 
-const SERVER_URL = 'ws://docker.server.s9s.ai:80';
+const SERVER_URL = 'ws://192.168.1.64:8080';
 
 function getDeviceIP() {
     const interfaces = os.networkInterfaces();
-    
-    // First, try to find non-private IPs
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                const ip = iface.address;
-                // Check if it's not a private IP
-                if (!ip.startsWith('10.') && 
-                    !ip.startsWith('192.168.') && 
-                    !ip.startsWith('172.') &&
-                    !ip.startsWith('127.')) {
-                    return ip;
-                }
-            }
-        }
-    }
-    
-    // If no public IP found, use the best private IP
-    const preferredInterfaces = ['eth0', 'ens', 'enp0s', 'wlan0', 'wlp'];
-    for (const preferred of preferredInterfaces) {
-        if (interfaces[preferred]) {
-            for (const iface of interfaces[preferred]) {
-                if (iface.family === 'IPv4' && !iface.internal) {
-                    return iface.address;
-                }
-            }
-        }
-    }
-    
-    // Fallback to any non-internal IPv4
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name]) {
             if (iface.family === 'IPv4' && !iface.internal) {
@@ -251,7 +77,6 @@ function getDeviceIP() {
             }
         }
     }
-    
     return 'unknown';
 }
 
@@ -308,7 +133,7 @@ function connect() {
     
     ws.on('open', async () => {
         console.log('✅ Connected! Device IP: ' + DEVICE_IP);
-        reconnectInterval = 5000;
+        reconnectInterval = 5000; // Reset reconnect interval on successful connection
         
         const systemInfo = await getSystemInfo();
         ws.send(JSON.stringify({
@@ -370,6 +195,7 @@ function connect() {
                 const tempDir = '/tmp/docker-build-' + Date.now();
                 const config = data.config || {};
                 
+                // Enhanced Dockerfile with configuration
                 const dockerfileContent = [
                     'FROM ' + data.baseImage,
                     'RUN apt-get update && apt-get install -y curl wget git vim nano htop stress-ng && rm -rf /var/lib/apt/lists/*',
@@ -399,6 +225,7 @@ function connect() {
                         fs.writeFileSync(dockerfilePath, dockerfileContent);
                         console.log('📝 Dockerfile created successfully');
                         
+                        // Build image
                         const buildCmd = 'cd ' + tempDir + ' && docker build -t ' + data.imageName + ' .';
                         console.log('🔨 Building image:', buildCmd);
                         
@@ -421,6 +248,7 @@ function connect() {
                             
                             console.log('✅ Image built successfully, starting container...');
                             
+                            // Run container with configuration
                             let runCmd = 'docker run -d';
                             if (config.ram) runCmd += ' --memory=' + config.ram + 'm';
                             if (config.cpu) runCmd += ' --cpus=' + config.cpu;
@@ -480,12 +308,12 @@ function connect() {
     ws.on('close', () => {
         console.log('❌ Disconnected. Reconnecting in ' + (reconnectInterval/1000) + 's...');
         setTimeout(connect, reconnectInterval);
-        reconnectInterval = Math.min(reconnectInterval * 1.5, 30000);
+        reconnectInterval = Math.min(reconnectInterval * 1.5, 30000); // Max 30s
     });
     
     ws.on('error', (err) => {
         console.log('🔄 Connection error:', err.code || err.message);
-        reconnectInterval = Math.min(reconnectInterval * 1.2, 15000);
+        reconnectInterval = Math.min(reconnectInterval * 1.2, 15000); // Backoff on error
     });
 }
 
@@ -540,6 +368,9 @@ KERNEL_VERSION_CLEAN=$(clean_json_string "$KERNEL_VERSION")
 DOCKER_VERSION_CLEAN=$(clean_json_string "$DOCKER_VERSION")
 PM2_VERSION_CLEAN=$(clean_json_string "$PM2_VERSION")
 
+echo "📋 JSON payload length: $(echo "$JSON_PAYLOAD" | wc -c)"
+echo "🔍 Checking for invalid characters..."
+
 JSON_PAYLOAD=$(cat << EOF
 {
   "deviceIP": "$DEVICE_IP",
@@ -561,7 +392,7 @@ EOF
 )
 
 echo "📤 Notifying server..."
-curl -X POST http://docker.server.s9s.ai:80/install-complete \
+curl -X POST http://192.168.1.64:8080/install-complete \
   -H "Content-Type: application/json" \
   -d "$JSON_PAYLOAD" \
   || echo "⚠️  Failed to notify server"
