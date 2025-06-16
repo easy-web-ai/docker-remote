@@ -1,0 +1,47 @@
+{
+  "ip": "192.168.47.131",
+  "hostname": "lamson-VMware-Virtual-Platform",
+  "status": "connected",
+  "connectTime": "2025-06-13T02:34:01.793Z",
+  "clientIP": "192.168.132.1",
+  "systemInfo": {
+    "uptime": 8510,
+    "freeMem": 6.32,
+    "loadAvg": [
+      0,
+      0.01,
+      0.06
+    ]
+  },
+  "lastSeen": "2025-06-13T04:54:33.999Z",
+  "installDate": "2025-06-13T09:34:02+07:00",
+  "lastUpdate": "2025-06-13T04:54:32.059Z",
+  "dockerImages": [
+    {
+      "name": "ubuntu-custom:latest",
+      "baseImage": "ubuntu:22.04",
+      "buildTime": "2025-06-13T02:34:44.873Z",
+      "buildId": 1749782056508.3662,
+      "config": {
+        "ram": "512",
+        "cpu": "1",
+        "disk": "2",
+        "port": "",
+        "network": "bridge"
+      }
+    },
+    {
+      "name": "ubuntu-custom:latest99",
+      "baseImage": "ubuntu:22.04",
+      "buildTime": "2025-06-13T02:34:58.360Z",
+      "buildId": 1749782096865.8557,
+      "config": {
+        "ram": "512",
+        "cpu": "1",
+        "disk": "2",
+        "port": "",
+        "network": "bridge"
+      }
+    }
+  ]
+}

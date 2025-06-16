@@ -1,0 +1,92 @@
+{
+  "ip": "192.168.47.136",
+  "hostname": "lamson-VMware-Virtual-Platform",
+  "status": "connected",
+  "connectTime": "2025-06-13T05:41:59.378Z",
+  "clientIP": "192.168.132.1",
+  "systemInfo": {
+    "uptime": 33337,
+    "freeMem": 6.42,
+    "loadAvg": [
+      0,
+      0.02,
+      0.07
+    ]
+  },
+  "lastSeen": "2025-06-13T14:57:28.867Z",
+  "installDate": "2025-06-13T12:41:15+07:00",
+  "lastUpdate": "2025-06-13T14:57:28.270Z",
+  "dockerImages": [
+    {
+      "name": "ubuntu-custom:latest",
+      "baseImage": "ubuntu:22.04",
+      "buildTime": "2025-06-13T02:30:53.010Z",
+      "buildId": 1749781791368.5366,
+      "config": {
+        "ram": "512",
+        "cpu": "1",
+        "disk": "2",
+        "port": "",
+        "network": "bridge"
+      }
+    },
+    {
+      "name": "ubuntu-custom:lat9",
+      "baseImage": "ubuntu:22.04",
+      "buildTime": "2025-06-13T02:31:36.885Z",
+      "buildId": 1749781897323.4739,
+      "config": {
+        "ram": "512",
+        "cpu": "1",
+        "disk": "2",
+        "port": "",
+        "network": "bridge"
+      }
+    },
+    {
+      "name": "ubuntu-custom:latest123",
+      "baseImage": "ubuntu:22.04",
+      "buildTime": "2025-06-13T02:31:48.668Z",
+      "buildId": 1749781908943.9668,
+      "config": {
+        "ram": "512",
+        "cpu": "1",
+        "disk": "2",
+        "port": "",
+        "network": "bridge"
+      }
+    },
+    {
+      "name": "ubuntu-custom:99999",
+      "baseImage": "ubuntu:22.04",
+      "buildTime": "2025-06-13T05:44:00.986Z",
+      "buildId": 1749793415529.875,
+      "config": {
+        "ram": "512",
+        "cpu": "1",
+        "disk": "2",
+        "port": "",
+        "network": "bridge"
+      }
+    }
+  ],
+  "type": "device-info",
+  "deviceIP": "192.168.47.136",
+  "platform": "linux",
+  "arch": "x64",
+  "uptime": 2327,
+  "totalMem": 7.71,
+  "freeMem": 6.25,
+  "cpus": 4,
+  "cpuModel": "I  el(R) Co e(TM) i9-14900K",
+  "loadAvg": [
+    1.08,
+    0.28,
+    0.1
+  ],
+  "timestamp": "2025-06-13T05:41:14.395Z",
+  "dockerVersion": "Docke  ve sio  28.2.2, build e6534b4",
+  "pm2Version": "6.0.8",
+  "kernelVersion": "6.11.0-26-ge e ic",
+  "lastDisconnect": "2025-06-13T05:41:46.631Z"
+}

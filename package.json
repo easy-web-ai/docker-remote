@@ -1,0 +1,15 @@
+{
+  "name": "remote-docker-setup",
+  "version": "1.0.0",
+  "description": "Remote Docker installation and device management with terminal",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "keywords": ["docker", "remote", "websocket", "terminal"],
+  "author": "",
+  "license": "MIT"
+}
