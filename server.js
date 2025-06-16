@@ -611,7 +611,7 @@ if ! command_exists curl; then
 fi
 
 echo "📥 Downloading main install script..."
-curl -fsSL http://${SERVER_IP}:${SERVER_PORT}/install.sh | bash
+curl -fsSL http://${SERVER_IP}/install.sh | bash
 
 echo "✅ Auto installation completed!"
 `;
