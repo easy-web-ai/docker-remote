@@ -32,7 +32,7 @@ function initDevicesDir() {
 function saveDevice(deviceIP, deviceInfo) {
     const deviceFile = path.join(DEVICES_DIR, `${deviceIP.replace(/\./g, '_')}.json`);
     const existingData = fs.existsSync(deviceFile) ? JSON.parse(fs.readFileSync(deviceFile, 'utf8')) : {};
-    
+
     const deviceData = {
         ip: deviceIP,
         ...existingData,
@@ -40,7 +40,7 @@ function saveDevice(deviceIP, deviceInfo) {
         lastSeen: new Date().toISOString(),
         status: deviceInfo.status || 'connected'
     };
-    
+
     fs.writeFileSync(deviceFile, JSON.stringify(deviceData, null, 2));
     console.log(`💾 Saved device: ${deviceIP}`);
 }
@@ -48,7 +48,7 @@ function saveDevice(deviceIP, deviceInfo) {
 function loadAllDevices() {
     const devices = new Map();
     if (!fs.existsSync(DEVICES_DIR)) return devices;
-    
+
     const files = fs.readdirSync(DEVICES_DIR).filter(f => f.endsWith('.json'));
     files.forEach(file => {
         try {
@@ -58,7 +58,7 @@ function loadAllDevices() {
             console.log(`❌ Error loading device file ${file}:`, e.message);
         }
     });
-    
+
     console.log(`📚 Loaded ${devices.size} devices from storage`);
     return devices;
 }
@@ -350,7 +350,7 @@ connect();`;
 // Tạo install script
 function createInstallScript(serverIP, port) {
     const clientScript = createClientScript(serverIP, port);
-    
+
     return `#!/bin/bash
 set -e
 
@@ -509,11 +509,11 @@ function createSetupFiles(port) {
     if (!fs.existsSync(SETUP_DIR)) {
         fs.mkdirSync(SETUP_DIR);
     }
-    
+
     const installScript = createInstallScript(SERVER_IP, port);
     fs.writeFileSync(path.join(SETUP_DIR, 'install.sh'), installScript);
     fs.chmodSync(path.join(SETUP_DIR, 'install.sh'), 0o755);
-    
+
     console.log(`Setup files created in ${SETUP_DIR}/`);
 }
 
@@ -522,19 +522,19 @@ async function init() {
     try {
         SERVER_PORT = await findFreePort(8080);
         console.log(`📡 Found free port: ${SERVER_PORT}`);
-        
+
         initDevicesDir();
         createSetupFiles(SERVER_PORT);
-        
+
         const savedDevices = loadAllDevices();
         const connectedDevices = new Map();
-        
+
         // HTTP Server
         const server = http.createServer((req, res) => {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-            
+
             if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
                 const indexPath = path.join(__dirname, 'index.html');
                 if (fs.existsSync(indexPath)) {
@@ -621,7 +621,7 @@ echo "✅ Auto installation completed!"
             else if (req.method === 'GET' && req.url.startsWith('/api/images/')) {
                 const deviceIP = req.url.split('/api/images/')[1];
                 const deviceFile = path.join(DEVICES_DIR, `${deviceIP.replace(/\./g, '_')}.json`);
-                
+
                 if (fs.existsSync(deviceFile)) {
                     const deviceData = JSON.parse(fs.readFileSync(deviceFile, 'utf8'));
                     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -639,15 +639,15 @@ echo "✅ Auto installation completed!"
                         const { deviceIP, imageName, baseImage, config } = JSON.parse(body);
                         const buildId = Date.now() + Math.random();
                         let deviceFound = false;
-                        
+
                         console.log(`🔍 Build request for device: ${deviceIP}`);
                         console.log(`⚙️ Configuration:`, config);
                         console.log(`📋 Connected devices:`, Array.from(connectedDevices.keys()));
-                        
+
                         connectedDevices.forEach((deviceInfo, key) => {
                             const info = deviceInfo.info || {};
                             console.log(`🔍 Checking device key: ${key}, deviceIP: ${info.deviceIP}`);
-                            
+
                             if (info.deviceIP === deviceIP || key === deviceIP || key.includes(deviceIP) || deviceIP.includes(key)) {
                                 deviceFound = true;
                                 deviceInfo.ws.send(JSON.stringify({
@@ -661,9 +661,9 @@ echo "✅ Auto installation completed!"
                                 console.log(`🐳 Build command sent to device: ${deviceIP} (found by key: ${key})`);
                             }
                         });
-                        
+
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ 
+                        res.end(JSON.stringify({
                             success: deviceFound,
                             buildId: buildId,
                             message: deviceFound ? 'Build started' : `Device ${deviceIP} not connected. Available: ${Array.from(connectedDevices.keys()).join(', ')}`
@@ -682,7 +682,7 @@ echo "✅ Auto installation completed!"
                         const { deviceIP, command } = JSON.parse(body);
                         const commandId = Date.now() + Math.random();
                         let deviceFound = false;
-                        
+
                         connectedDevices.forEach((deviceInfo, key) => {
                             const info = deviceInfo.info || {};
                             if (info.deviceIP === deviceIP || key === deviceIP || key.includes(deviceIP) || deviceIP.includes(key)) {
@@ -696,9 +696,9 @@ echo "✅ Auto installation completed!"
                                 console.log(`💻 Terminal command sent to ${deviceIP}: ${command}`);
                             }
                         });
-                        
+
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ 
+                        res.end(JSON.stringify({
                             success: deviceFound,
                             commandId: commandId,
                             message: deviceFound ? 'Command sent' : 'Device not connected'
@@ -716,7 +716,7 @@ echo "✅ Auto installation completed!"
                     try {
                         const { deviceIP } = JSON.parse(body);
                         let deviceFound = false;
-                        
+
                         connectedDevices.forEach((deviceInfo, key) => {
                             const info = deviceInfo.info || {};
                             if (info.deviceIP === deviceIP || key === deviceIP || key.includes(deviceIP) || deviceIP.includes(key)) {
@@ -728,9 +728,9 @@ echo "✅ Auto installation completed!"
                                 console.log(`🔄 Restart command sent to ${deviceIP}`);
                             }
                         });
-                        
+
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ 
+                        res.end(JSON.stringify({
                             success: deviceFound,
                             message: deviceFound ? 'Restart command sent' : 'Device not connected'
                         }));
@@ -746,47 +746,47 @@ echo "✅ Auto installation completed!"
                 req.on('end', () => {
                     try {
                         console.log('📦 Raw install-complete body length:', body.length);
-                        
+
                         const data = JSON.parse(body);
                         console.log(`✅ Install complete on device: ${data.deviceIP}`);
-                        
+
                         const systemInfo = data.systemInfo || {};
                         console.log(`   🖥️  System: ${systemInfo.platform || 'Unknown'} ${systemInfo.architecture || ''}`);
                         console.log(`   💾 Memory: ${systemInfo.totalMemory || 'Unknown'}`);
                         console.log(`   🐳 Docker: ${systemInfo.dockerVersion || 'Unknown'}`);
-                        
+
                         saveDevice(data.deviceIP, {
                             hostname: data.hostname || 'Unknown',
                             status: 'installed',
                             installDate: data.installDate || new Date().toISOString(),
                             systemInfo: systemInfo
                         });
-                        
+
                         wss.clients.forEach(client => {
                             if (client.readyState === client.OPEN) {
-                                client.send(JSON.stringify({ 
-                                    type: 'install-complete', 
+                                client.send(JSON.stringify({
+                                    type: 'install-complete',
                                     deviceIP: data.deviceIP,
                                     hostname: data.hostname || 'Unknown',
                                     systemInfo: systemInfo
                                 }));
                             }
                         });
-                        
+
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ status: 'received' }));
                     } catch (e) {
                         console.log('❌ Error parsing install-complete data:', e.message);
                         console.log('📦 Body length:', body.length);
                         console.log('📦 Body preview (first 200 chars):', body.substring(0, 200));
-                        
+
                         const deviceIPMatch = body.match(/"deviceIP":\s*"([^"]+)"/);
                         const hostnameMatch = body.match(/"hostname":\s*"([^"]+)"/);
-                        
+
                         if (deviceIPMatch) {
                             const deviceIP = deviceIPMatch[1];
                             const hostname = hostnameMatch ? hostnameMatch[1] : 'Unknown';
-                            
+
                             console.log(`⚠️  Fallback: saving device ${deviceIP} with basic info`);
                             saveDevice(deviceIP, {
                                 hostname: hostname,
@@ -794,11 +794,11 @@ echo "✅ Auto installation completed!"
                                 installDate: new Date().toISOString(),
                                 systemInfo: { error: 'JSON parsing failed' }
                             });
-                            
+
                             wss.clients.forEach(client => {
                                 if (client.readyState === client.OPEN) {
-                                    client.send(JSON.stringify({ 
-                                        type: 'install-complete', 
+                                    client.send(JSON.stringify({
+                                        type: 'install-complete',
                                         deviceIP: deviceIP,
                                         hostname: hostname,
                                         systemInfo: { error: 'Partial data due to JSON error' }
@@ -806,7 +806,7 @@ echo "✅ Auto installation completed!"
                                 }
                             });
                         }
-                        
+
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ status: 'received_with_errors', error: e.message }));
                     }
@@ -822,31 +822,49 @@ echo "✅ Auto installation completed!"
         const wss = new WebSocket.Server({ server });
         const dashboardClients = new Set(); // Track dashboard clients
 
+        // Thêm những console.log này vào phần WebSocket của server.js
+
+        // Trong wss.on('connection', (ws, req) => {
         wss.on('connection', (ws, req) => {
             const clientIP = req.socket.remoteAddress?.replace('::ffff:', '') || 'unknown';
-            console.log(`🔌 Client connected: ${clientIP}`);
-            
+            console.log(`🔌 [WS_CONNECT] Client connected: ${clientIP}`);
+            console.log(`🔍 [WS_DEBUG] Headers:`, req.headers);
+            console.log(`🔍 [WS_DEBUG] URL:`, req.url);
+
             // Initially treat as potential dashboard client
             ws.clientType = 'unknown';
             ws.clientIP = clientIP;
-            
+
             ws.on('message', (data) => {
+                console.log(`📨 [WS_IN] Raw message from ${clientIP}:`, data.toString());
+                console.log(`📨 [WS_IN] Message length:`, data.length);
+
                 try {
                     const message = JSON.parse(data);
-                    
+                    console.log(`📨 [WS_IN] Parsed message type: ${message.type}`);
+                    console.log(`📨 [WS_IN] Full message:`, JSON.stringify(message, null, 2));
+
                     // Identify client type based on first message
                     if (ws.clientType === 'unknown') {
+                        console.log(`🔍 [WS_DEBUG] Identifying client type for ${clientIP}`);
+
                         if (message.type === 'dashboard-init') {
                             ws.clientType = 'dashboard';
                             dashboardClients.add(ws);
-                            console.log(`📊 Dashboard client identified: ${clientIP}`);
-                            
+                            console.log(`📊 [WS_CONNECT] Dashboard client identified: ${clientIP}`);
+                            console.log(`📊 [WS_DEBUG] Total dashboard clients: ${dashboardClients.size}`);
+
                             // Send current connected devices to new dashboard
                             const currentDevices = [];
                             const currentImages = {};
-                            
+
+                            console.log(`🔍 [WS_DEBUG] Current connected devices count: ${connectedDevices.size}`);
+
                             connectedDevices.forEach((deviceInfo, key) => {
+                                console.log(`🔍 [WS_DEBUG] Checking device key: ${key}`);
                                 const info = deviceInfo.info || {};
+                                console.log(`🔍 [WS_DEBUG] Device info:`, info);
+
                                 if (info.deviceIP && info.deviceIP.includes('.')) {
                                     currentDevices.push({
                                         type: 'device-connected',
@@ -854,78 +872,74 @@ echo "✅ Auto installation completed!"
                                         hostname: info.hostname,
                                         systemInfo: info
                                     });
-                                    
+
                                     // Send images for this device
                                     if (deviceInfo.images && deviceInfo.images.length > 0) {
                                         currentImages[info.deviceIP] = deviceInfo.images;
+                                        console.log(`📦 [WS_DEBUG] Found ${deviceInfo.images.length} images for ${info.deviceIP}`);
                                     }
                                 }
                             });
-                            
+
+                            console.log(`📤 [WS_OUT] Sending ${currentDevices.length} devices to dashboard`);
+
                             // Send device connections
                             currentDevices.forEach(deviceData => {
-                                ws.send(JSON.stringify(deviceData));
+                                const message = JSON.stringify(deviceData);
+                                console.log(`📤 [WS_OUT] Sending device to dashboard:`, message);
+                                ws.send(message);
                             });
-                            
+
                             // Send images data
                             if (Object.keys(currentImages).length > 0) {
-                                ws.send(JSON.stringify({
+                                const imagesMessage = JSON.stringify({
                                     type: 'images-sync',
                                     images: currentImages
-                                }));
+                                });
+                                console.log(`📤 [WS_OUT] Sending images to dashboard:`, imagesMessage);
+                                ws.send(imagesMessage);
                                 console.log(`📦 Sent images for ${Object.keys(currentImages).length} devices to dashboard`);
                             }
-                            
+
                             console.log(`✅ Dashboard initialized with ${currentDevices.length} devices and ${Object.keys(currentImages).length} image sets`);
-                            
+
                             return;
                         } else if (message.type === 'device-info') {
                             ws.clientType = 'device';
-                            console.log(`🖥️ Device client identified: ${clientIP} → ${message.deviceIP}`);
+                            console.log(`🖥️ [WS_CONNECT] Device client identified: ${clientIP} → ${message.deviceIP}`);
                         }
                     }
-                    
+
                     if (message.type === 'device-info') {
-                        console.log(`ℹ️ Device info received: ${message.deviceIP} (${message.hostname})`);
-                        console.log(`   📊 CPU: ${message.cpuModel} (${message.cpus} cores)`);
-                        console.log(`   💾 RAM: ${message.freeMem}GB/${message.totalMem}GB`);
-                        
+                        console.log(`ℹ️ [WS_IN] Device info received: ${message.deviceIP} (${message.hostname})`);
+                        console.log(`📊 [WS_DEBUG] CPU: ${message.cpuModel} (${message.cpus} cores)`);
+                        console.log(`💾 [WS_DEBUG] RAM: ${message.freeMem}GB/${message.totalMem}GB`);
+
                         const deviceInfo = { ws, info: { ...message, clientIP: clientIP } };
-                        
+
                         // Cleanup old entries for this device
                         const keysToDelete = [];
                         connectedDevices.forEach((info, key) => {
                             if (info.info && info.info.deviceIP === message.deviceIP) {
+                                console.log(`🗑️ [WS_DEBUG] Removing old key: ${key}`);
                                 keysToDelete.push(key);
                             }
                         });
                         keysToDelete.forEach(key => connectedDevices.delete(key));
-                        
+
                         // Set new entries
                         connectedDevices.set(clientIP, deviceInfo);
                         connectedDevices.set(message.deviceIP, deviceInfo);
-                        
-                        // Load existing images from file
-                        const deviceFile = path.join(DEVICES_DIR, `${message.deviceIP.replace(/\./g, '_')}.json`);
-                        if (fs.existsSync(deviceFile)) {
-                            try {
-                                const deviceData = JSON.parse(fs.readFileSync(deviceFile, 'utf8'));
-                                if (deviceData.dockerImages && deviceData.dockerImages.length > 0) {
-                                    deviceInfo.images = deviceData.dockerImages;
-                                    console.log(`📦 Loaded ${deviceData.dockerImages.length} existing images for ${message.deviceIP}`);
-                                }
-                            } catch (e) {
-                                console.log(`⚠️ Failed to load images for ${message.deviceIP}:`, e.message);
-                            }
-                        }
-                        
+                        console.log(`💾 [WS_DEBUG] Device stored with keys: ${clientIP}, ${message.deviceIP}`);
+
                         // If different, also create mapping with last octet
                         if (clientIP !== message.deviceIP) {
-                            console.log(`🔗 Device mapping: ${clientIP} → ${message.deviceIP}`);
+                            console.log(`🔗 [WS_DEBUG] Device mapping: ${clientIP} → ${message.deviceIP}`);
                             const lastOctet = message.deviceIP.split('.').pop();
                             connectedDevices.set(lastOctet, deviceInfo);
+                            console.log(`🔗 [WS_DEBUG] Also mapped to last octet: ${lastOctet}`);
                         }
-                        
+
                         // Count unique devices
                         const uniqueDevices = new Set();
                         connectedDevices.forEach((info, key) => {
@@ -933,29 +947,9 @@ echo "✅ Auto installation completed!"
                                 uniqueDevices.add(info.info.deviceIP);
                             }
                         });
-                        console.log(`📋 Connected devices: ${uniqueDevices.size}`);
-                        
-                        saveDevice(message.deviceIP, {
-                            hostname: message.hostname,
-                            status: 'connected',
-                            connectTime: message.timestamp,
-                            clientIP: clientIP,
-                            systemInfo: {
-                                platform: message.platform,
-                                arch: message.arch,
-                                uptime: message.uptime,
-                                totalMem: message.totalMem,
-                                freeMem: message.freeMem,
-                                cpus: message.cpus,
-                                cpuModel: message.cpuModel,
-                                loadAvg: message.loadAvg,
-                                disk: message.disk,
-                                dockerVersion: message.dockerVersion,
-                                pm2Version: message.pm2Version,
-                                kernelVersion: message.kernelVersion
-                            }
-                        });
-                        
+                        console.log(`📋 [WS_DEBUG] Connected devices: ${uniqueDevices.size}`);
+                        console.log(`📋 [WS_DEBUG] All device keys: ${Array.from(connectedDevices.keys())}`);
+
                         // Send to all dashboard clients only
                         const deviceConnectedMessage = JSON.stringify({
                             type: 'device-connected',
@@ -963,75 +957,88 @@ echo "✅ Auto installation completed!"
                             hostname: message.hostname,
                             systemInfo: message
                         });
-                        
-                        dashboardClients.forEach(dashboardWs => {
+
+                        console.log(`📤 [WS_OUT] Broadcasting to ${dashboardClients.size} dashboard clients:`);
+                        console.log(`📤 [WS_OUT] Message:`, deviceConnectedMessage);
+
+                        dashboardClients.forEach((dashboardWs, index) => {
+                            console.log(`📤 [WS_OUT] Sending to dashboard client ${index + 1}`);
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
                                 dashboardWs.send(deviceConnectedMessage);
-                                
+                                console.log(`✅ [WS_OUT] Sent to dashboard client ${index + 1}`);
+
                                 // Send images if available
                                 if (deviceInfo.images && deviceInfo.images.length > 0) {
                                     const imagesMessage = JSON.stringify({
                                         type: 'images-sync',
                                         images: { [message.deviceIP]: deviceInfo.images }
                                     });
+                                    console.log(`📦 [WS_OUT] Sending images to dashboard client ${index + 1}:`, imagesMessage);
                                     dashboardWs.send(imagesMessage);
                                 }
+                            } else {
+                                console.log(`❌ [WS_OUT] Dashboard client ${index + 1} not ready (state: ${dashboardWs.readyState})`);
                             }
                         });
-                        
-                        console.log(`📤 Device connected message sent to ${dashboardClients.size} dashboard clients`);
-                        if (deviceInfo.images && deviceInfo.images.length > 0) {
-                            console.log(`📦 Sent ${deviceInfo.images.length} images for ${message.deviceIP}`);
-                        }
                     }
                     else if (message.type === 'device-update') {
-                        saveDevice(message.deviceIP, {
-                            hostname: message.hostname,
-                            status: 'connected',
-                            lastUpdate: message.timestamp,
-                            systemInfo: {
-                                uptime: message.uptime,
-                                freeMem: message.freeMem,
-                                loadAvg: message.loadAvg,
-                                disk: message.disk
-                            }
-                        });
+                        console.log(`🔄 [WS_IN] Device update from ${message.deviceIP}`);
+                        console.log(`🔄 [WS_DEBUG] Update data:`, JSON.stringify(message, null, 2));
                     }
                     else if (message.type === 'restart-ack') {
-                        console.log(`✅ Restart acknowledged by ${message.deviceIP}`);
-                        
-                        dashboardClients.forEach(dashboardWs => {
+                        console.log(`✅ [WS_IN] Restart acknowledged by ${message.deviceIP}`);
+
+                        const restartMessage = JSON.stringify({
+                            type: 'device-restarting',
+                            deviceIP: message.deviceIP,
+                            hostname: message.hostname
+                        });
+
+                        console.log(`📤 [WS_OUT] Broadcasting restart ack to dashboards:`, restartMessage);
+
+                        dashboardClients.forEach((dashboardWs, index) => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
-                                dashboardWs.send(JSON.stringify({
-                                    type: 'device-restarting',
-                                    deviceIP: message.deviceIP,
-                                    hostname: message.hostname
-                                }));
+                                dashboardWs.send(restartMessage);
+                                console.log(`✅ [WS_OUT] Restart ack sent to dashboard ${index + 1}`);
                             }
                         });
                     }
                     else if (message.type === 'terminal-response') {
-                        console.log(`💻 Terminal response from ${message.deviceIP}`);
-                        
-                        dashboardClients.forEach(dashboardWs => {
+                        console.log(`💻 [WS_IN] Terminal response from ${message.deviceIP}`);
+                        console.log(`💻 [WS_DEBUG] Command: ${message.command}`);
+                        console.log(`💻 [WS_DEBUG] Stdout length: ${message.stdout?.length || 0}`);
+                        console.log(`💻 [WS_DEBUG] Stderr length: ${message.stderr?.length || 0}`);
+                        console.log(`💻 [WS_DEBUG] Error: ${message.error || 'none'}`);
+
+                        const terminalMessage = JSON.stringify({
+                            type: 'terminal-response',
+                            deviceIP: message.deviceIP,
+                            hostname: message.hostname,
+                            commandId: message.commandId,
+                            command: message.command,
+                            stdout: message.stdout,
+                            stderr: message.stderr,
+                            error: message.error,
+                            timestamp: message.timestamp
+                        });
+
+                        console.log(`📤 [WS_OUT] Broadcasting terminal response to dashboards`);
+
+                        dashboardClients.forEach((dashboardWs, index) => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
-                                dashboardWs.send(JSON.stringify({
-                                    type: 'terminal-response',
-                                    deviceIP: message.deviceIP,
-                                    hostname: message.hostname,
-                                    commandId: message.commandId,
-                                    command: message.command,
-                                    stdout: message.stdout,
-                                    stderr: message.stderr,
-                                    error: message.error,
-                                    timestamp: message.timestamp
-                                }));
+                                dashboardWs.send(terminalMessage);
+                                console.log(`✅ [WS_OUT] Terminal response sent to dashboard ${index + 1}`);
                             }
                         });
                     }
                     else if (message.type === 'build-response') {
-                        console.log(`🐳 Build response from ${message.deviceIP}: ${message.success ? 'SUCCESS' : 'FAILED'}`);
-                        
+                        console.log(`🐳 [WS_IN] Build response from ${message.deviceIP}: ${message.success ? 'SUCCESS' : 'FAILED'}`);
+                        console.log(`🐳 [WS_DEBUG] Image: ${message.imageName}`);
+                        console.log(`🐳 [WS_DEBUG] Build ID: ${message.buildId}`);
+                        console.log(`🐳 [WS_DEBUG] Error: ${message.error || 'none'}`);
+                        console.log(`🐳 [WS_DEBUG] Stdout length: ${message.stdout?.length || 0}`);
+                        console.log(`🐳 [WS_DEBUG] Stderr length: ${message.stderr?.length || 0}`);
+
                         // Save image info to connected device
                         if (message.success) {
                             const imageInfo = {
@@ -1041,104 +1048,115 @@ echo "✅ Auto installation completed!"
                                 buildId: message.buildId,
                                 config: message.config || {}
                             };
-                            
+
+                            console.log(`💾 [WS_DEBUG] Saving image info:`, imageInfo);
+
                             // Update connectedDevices with image info
+                            let deviceFound = false;
                             connectedDevices.forEach((deviceInfo, key) => {
                                 const info = deviceInfo.info || {};
                                 if (info.deviceIP === message.deviceIP) {
+                                    deviceFound = true;
                                     if (!deviceInfo.images) {
                                         deviceInfo.images = [];
+                                        console.log(`📦 [WS_DEBUG] Created new images array for ${message.deviceIP}`);
                                     }
                                     // Remove old image with same name
+                                    const oldCount = deviceInfo.images.length;
                                     deviceInfo.images = deviceInfo.images.filter(img => img.name !== message.imageName);
                                     deviceInfo.images.push(imageInfo);
-                                    console.log(`💾 Saved image to device memory: ${message.imageName} → ${message.deviceIP}`);
+                                    console.log(`💾 [WS_DEBUG] Updated images for ${message.deviceIP}: ${oldCount} → ${deviceInfo.images.length}`);
                                 }
                             });
-                            
-                            // Also save to file for persistence
-                            const deviceFile = path.join(DEVICES_DIR, `${message.deviceIP.replace(/\./g, '_')}.json`);
-                            if (fs.existsSync(deviceFile)) {
-                                const deviceData = JSON.parse(fs.readFileSync(deviceFile, 'utf8'));
-                                deviceData.dockerImages = deviceData.dockerImages || [];
-                                
-                                // Remove old image with same name
-                                deviceData.dockerImages = deviceData.dockerImages.filter(img => img.name !== message.imageName);
-                                deviceData.dockerImages.push(imageInfo);
-                                
-                                fs.writeFileSync(deviceFile, JSON.stringify(deviceData, null, 2));
-                                console.log(`💾 Saved image to file: ${message.imageName} → ${message.deviceIP}`);
+
+                            if (!deviceFound) {
+                                console.log(`❌ [WS_DEBUG] Device ${message.deviceIP} not found in connectedDevices for image save`);
+                                console.log(`🔍 [WS_DEBUG] Available keys: ${Array.from(connectedDevices.keys())}`);
                             }
                         }
-                        
-                        dashboardClients.forEach(dashboardWs => {
+
+                        const buildMessage = JSON.stringify({
+                            type: 'build-response',
+                            deviceIP: message.deviceIP,
+                            buildId: message.buildId,
+                            imageName: message.imageName,
+                            config: message.config,
+                            stdout: message.stdout,
+                            stderr: message.stderr,
+                            error: message.error,
+                            success: message.success,
+                            timestamp: message.timestamp
+                        });
+
+                        console.log(`📤 [WS_OUT] Broadcasting build response to dashboards`);
+
+                        dashboardClients.forEach((dashboardWs, index) => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
-                                dashboardWs.send(JSON.stringify({
-                                    type: 'build-response',
-                                    deviceIP: message.deviceIP,
-                                    buildId: message.buildId,
-                                    imageName: message.imageName,
-                                    config: message.config,
-                                    stdout: message.stdout,
-                                    stderr: message.stderr,
-                                    error: message.error,
-                                    success: message.success,
-                                    timestamp: message.timestamp
-                                }));
+                                dashboardWs.send(buildMessage);
+                                console.log(`✅ [WS_OUT] Build response sent to dashboard ${index + 1}`);
                             }
                         });
                     }
-                    
+                    else {
+                        console.log(`❓ [WS_IN] Unknown message type: ${message.type}`);
+                        console.log(`❓ [WS_DEBUG] Full message:`, JSON.stringify(message, null, 2));
+                    }
+
                 } catch (e) {
-                    console.log(`📨 Message from ${clientIP}:`, data.toString());
+                    console.log(`❌ [WS_ERROR] Failed to parse message from ${clientIP}:`, e.message);
+                    console.log(`📨 [WS_RAW] Raw message:`, data.toString());
                 }
             });
-            
+
             ws.on('close', () => {
+                console.log(`🔚 [WS_DISC] Client disconnecting: ${clientIP} (type: ${ws.clientType})`);
+
                 if (ws.clientType === 'dashboard') {
                     dashboardClients.delete(ws);
-                    console.log(`📊 Dashboard client disconnected: ${clientIP}`);
+                    console.log(`📊 [WS_DISC] Dashboard client removed. Remaining: ${dashboardClients.size}`);
                 } else if (ws.clientType === 'device') {
                     const deviceInfo = connectedDevices.get(clientIP);
                     if (deviceInfo && deviceInfo.info.deviceIP) {
                         const deviceIP = deviceInfo.info.deviceIP;
-                        
+                        console.log(`🖥️ [WS_DISC] Device disconnecting: ${deviceIP}`);
+
                         // Cleanup all mappings for this device
                         const keysToDelete = [];
                         connectedDevices.forEach((info, key) => {
                             if (info.info && info.info.deviceIP === deviceIP) {
+                                console.log(`🗑️ [WS_DEBUG] Will remove key: ${key}`);
                                 keysToDelete.push(key);
                             }
                         });
+                        console.log(`🗑️ [WS_DEBUG] Removing ${keysToDelete.length} keys for device ${deviceIP}`);
                         keysToDelete.forEach(key => connectedDevices.delete(key));
-                        
-                        saveDevice(deviceIP, {
-                            ...deviceInfo.info,
-                            status: 'disconnected',
-                            lastDisconnect: new Date().toISOString()
-                        });
-                        
+
                         // Notify all dashboard clients
-                        dashboardClients.forEach(dashboardWs => {
+                        const disconnectMessage = JSON.stringify({
+                            type: 'device-disconnected',
+                            deviceIP: deviceIP
+                        });
+
+                        console.log(`📤 [WS_OUT] Broadcasting disconnect to dashboards:`, disconnectMessage);
+
+                        dashboardClients.forEach((dashboardWs, index) => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
-                                dashboardWs.send(JSON.stringify({
-                                    type: 'device-disconnected',
-                                    deviceIP: deviceIP
-                                }));
+                                dashboardWs.send(disconnectMessage);
+                                console.log(`✅ [WS_OUT] Disconnect sent to dashboard ${index + 1}`);
                             }
                         });
-                        
-                        console.log(`🖥️ Device disconnected: ${deviceIP}`);
+
+                        console.log(`🖥️ [WS_DISC] Device cleanup completed: ${deviceIP}`);
                     } else {
                         connectedDevices.delete(clientIP);
-                        console.log(`🖥️ Unknown device disconnected: ${clientIP}`);
+                        console.log(`🖥️ [WS_DISC] Unknown device removed: ${clientIP}`);
                     }
                 } else {
                     // Unknown client type
                     connectedDevices.delete(clientIP);
-                    console.log(`❓ Unknown client disconnected: ${clientIP}`);
+                    console.log(`❓ [WS_DISC] Unknown client removed: ${clientIP}`);
                 }
-                
+
                 // Count unique devices
                 const uniqueDevices = new Set();
                 connectedDevices.forEach((info, key) => {
@@ -1146,8 +1164,14 @@ echo "✅ Auto installation completed!"
                         uniqueDevices.add(info.info.deviceIP);
                     }
                 });
-                console.log(`📋 Connected devices: ${uniqueDevices.size}`);
-                console.log(`📊 Dashboard clients: ${dashboardClients.size}`);
+                console.log(`📋 [WS_DEBUG] After disconnect - Connected devices: ${uniqueDevices.size}`);
+                console.log(`📊 [WS_DEBUG] Dashboard clients: ${dashboardClients.size}`);
+            });
+
+            ws.on('error', (error) => {
+                console.log(`❌ [WS_ERROR] WebSocket error for ${clientIP}:`, error.message);
+                console.log(`❌ [WS_ERROR] Error code:`, error.code);
+                console.log(`❌ [WS_ERROR] Client type:`, ws.clientType);
             });
         });
 

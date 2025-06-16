@@ -66,7 +66,7 @@ const WebSocket = require('ws');
 const os = require('os');
 const { exec } = require('child_process');
 
-const SERVER_URL = 'ws://docker.server.s9s.ai:80';
+const SERVER_URL = 'ws://docker.server.s9s.ai:8080';
 
 function getDeviceIP() {
     const interfaces = os.networkInterfaces();
@@ -392,7 +392,7 @@ EOF
 )
 
 echo "📤 Notifying server..."
-curl -X POST https://docker.server.s9s.ai:80/install-complete \
+curl -X POST http://docker.server.s9s.ai:8080/install-complete \
   -H "Content-Type: application/json" \
   -d "$JSON_PAYLOAD" \
   || echo "⚠️  Failed to notify server"
