@@ -139,8 +139,8 @@ function getSystemInfo() {
 }
 
 function connect() {
-    console.log('🔌 Connecting to ' + SERVER_URL + '...');
-    ws = new WebSocket(SERVER_URL);
+    console.log('🔌 Connecting to wss://docker.server.s9s.ai');
+    ws = new WebSocket('wss://docker.server.s9s.ai');
     
     ws.on('open', async () => {
         console.log('✅ Connected! Device IP: ' + DEVICE_IP);
