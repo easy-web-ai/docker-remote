@@ -17,6 +17,12 @@ function getLocalIP() {
     return 'localhost';
 }
 
+// Determine server address based on context
+function getServerAddress() {
+    // This will be overridden by the actual hostname when serving
+    return process.env.SERVER_HOST || getLocalIP();
+}
+
 const SERVER_IP = getLocalIP();
 let SERVER_PORT = 8080;
 const SETUP_DIR = './remote-setup';
@@ -42,7 +48,7 @@ function saveDevice(deviceIP, deviceInfo) {
     };
     
     fs.writeFileSync(deviceFile, JSON.stringify(deviceData, null, 2));
-    console.log(`💾 Saved device: ${deviceIP}`);
+    console.log(`💾 Device saved: ${deviceIP} (${deviceInfo.hostname || 'Unknown'})`);
 }
 
 function loadAllDevices() {
@@ -87,13 +93,13 @@ function findFreePort(startPort = 8080) {
     });
 }
 
-// Tạo client script content
-function createClientScript(serverIP, port) {
+// Tạo client script content với dynamic server address
+function createClientScript(serverHost, port) {
     return `const WebSocket = require('ws');
 const os = require('os');
 const { exec } = require('child_process');
 
-const SERVER_URL = 'ws://${serverIP}:${port}';
+const SERVER_URL = 'ws://${serverHost}:${port}';
 
 function getDeviceIP() {
     const interfaces = os.networkInterfaces();
@@ -347,9 +353,9 @@ function connect() {
 connect();`;
 }
 
-// Tạo install script
-function createInstallScript(serverIP, port) {
-    const clientScript = createClientScript(serverIP, port);
+// Tạo install script với dynamic server address
+function createInstallScript(serverHost, port) {
+    const clientScript = createClientScript(serverHost, port);
     
     return `#!/bin/bash
 set -e
@@ -466,9 +472,6 @@ KERNEL_VERSION_CLEAN=$(clean_json_string "$KERNEL_VERSION")
 DOCKER_VERSION_CLEAN=$(clean_json_string "$DOCKER_VERSION")
 PM2_VERSION_CLEAN=$(clean_json_string "$PM2_VERSION")
 
-echo "📋 JSON payload length: $(echo "$JSON_PAYLOAD" | wc -c)"
-echo "🔍 Checking for invalid characters..."
-
 JSON_PAYLOAD=$(cat << EOF
 {
   "deviceIP": "$DEVICE_IP",
@@ -490,31 +493,34 @@ EOF
 )
 
 echo "📤 Notifying server..."
-curl -X POST http://${serverIP}:${port}/install-complete \\
+curl -X POST http://${serverHost}:${port}/install-complete \\
   -H "Content-Type: application/json" \\
   -d "$JSON_PAYLOAD" \\
   || echo "⚠️  Failed to notify server"
 
 echo "✅ Setup complete!"
-echo "Device IP: $DEVICE_IP"
-echo "WebSocket client running with PM2"
-echo "Check status: sudo pm2 status"
+echo "📱 Device IP: $DEVICE_IP"
+echo "🖥️  Hostname: $HOSTNAME_CLEAN"  
+echo "🐳 Docker: $DOCKER_VERSION_CLEAN"
+echo "🔄 WebSocket client running with PM2"
+echo "🔍 Check status: sudo pm2 status"
 
 rm -f get-docker.sh
 `;
 }
 
 // Tạo setup files
-function createSetupFiles(port) {
+function createSetupFiles(port, hostname = null) {
     if (!fs.existsSync(SETUP_DIR)) {
         fs.mkdirSync(SETUP_DIR);
     }
     
-    const installScript = createInstallScript(SERVER_IP, port);
+    const serverHost = hostname || SERVER_IP;
+    const installScript = createInstallScript(serverHost, port);
     fs.writeFileSync(path.join(SETUP_DIR, 'install.sh'), installScript);
     fs.chmodSync(path.join(SETUP_DIR, 'install.sh'), 0o755);
     
-    console.log(`Setup files created in ${SETUP_DIR}/`);
+    console.log(`📁 Setup files created in ${SETUP_DIR}/ for ${serverHost}:${port}`);
 }
 
 // Khởi tạo server
@@ -534,6 +540,12 @@ async function init() {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+            
+            // Get current hostname for dynamic script generation
+            const currentHostname = req.headers.host ? req.headers.host.split(':')[0] : SERVER_IP;
+            const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
+            const serverAddress = isLocalhost ? `${SERVER_IP}:${SERVER_PORT}` : currentHostname;
+            const portDisplay = isLocalhost ? `:${SERVER_PORT}` : '';
             
             if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
                 const indexPath = path.join(__dirname, 'index.html');
@@ -570,14 +582,10 @@ async function init() {
                 res.end(JSON.stringify(deviceArray));
             }
             else if (req.method === 'GET' && req.url === '/install.sh') {
-                const scriptPath = path.join(SETUP_DIR, 'install.sh');
-                if (fs.existsSync(scriptPath)) {
-                    res.writeHead(200, { 'Content-Type': 'text/plain' });
-                    res.end(fs.readFileSync(scriptPath));
-                } else {
-                    res.writeHead(404);
-                    res.end('install.sh not found');
-                }
+                // Generate dynamic install script based on current request hostname
+                const dynamicScript = createInstallScript(currentHostname, isLocalhost ? SERVER_PORT : (req.headers.host ? req.headers.host.split(':')[1] || '80' : '80'));
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end(dynamicScript);
             }
             else if (req.method === 'GET' && req.url === '/auto-install') {
                 const autoScript = `#!/bin/bash
@@ -611,7 +619,7 @@ if ! command_exists curl; then
 fi
 
 echo "📥 Downloading main install script..."
-curl -fsSL http://${SERVER_IP}:${SERVER_PORT}/install.sh | bash
+curl -fsSL http://${serverAddress}${portDisplay}/install.sh | bash
 
 echo "✅ Auto installation completed!"
 `;
@@ -748,7 +756,7 @@ echo "✅ Auto installation completed!"
                         console.log('📦 Raw install-complete body length:', body.length);
                         
                         const data = JSON.parse(body);
-                        console.log(`✅ Install complete on device: ${data.deviceIP}`);
+                        console.log(`✅ Install complete on device: ${data.deviceIP} (${data.hostname || 'Unknown'})`);
                         
                         const systemInfo = data.systemInfo || {};
                         console.log(`   🖥️  System: ${systemInfo.platform || 'Unknown'} ${systemInfo.architecture || ''}`);
@@ -886,9 +894,11 @@ echo "✅ Auto installation completed!"
                     }
                     
                     if (message.type === 'device-info') {
-                        console.log(`ℹ️ Device info received: ${message.deviceIP} (${message.hostname})`);
-                        console.log(`   📊 CPU: ${message.cpuModel} (${message.cpus} cores)`);
+                        console.log(`📱 Device connected: ${message.deviceIP} (${message.hostname})`);
+                        console.log(`   🖥️  System: ${message.platform} ${message.arch}`);
+                        console.log(`   🔧 CPU: ${message.cpuModel} (${message.cpus} cores)`);
                         console.log(`   💾 RAM: ${message.freeMem}GB/${message.totalMem}GB`);
+                        console.log(`   🐳 Docker: ${message.dockerVersion}`);
                         
                         const deviceInfo = { ws, info: { ...message, clientIP: clientIP } };
                         
@@ -998,7 +1008,7 @@ echo "✅ Auto installation completed!"
                         });
                     }
                     else if (message.type === 'restart-ack') {
-                        console.log(`✅ Restart acknowledged by ${message.deviceIP}`);
+                        console.log(`✅ Restart acknowledged by ${message.deviceIP} (${message.hostname})`);
                         
                         dashboardClients.forEach(dashboardWs => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
@@ -1011,7 +1021,7 @@ echo "✅ Auto installation completed!"
                         });
                     }
                     else if (message.type === 'terminal-response') {
-                        console.log(`💻 Terminal response from ${message.deviceIP}`);
+                        console.log(`💻 Terminal response from ${message.deviceIP} (${message.hostname}): ${message.command}`);
                         
                         dashboardClients.forEach(dashboardWs => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
@@ -1030,7 +1040,7 @@ echo "✅ Auto installation completed!"
                         });
                     }
                     else if (message.type === 'build-response') {
-                        console.log(`🐳 Build response from ${message.deviceIP}: ${message.success ? 'SUCCESS' : 'FAILED'}`);
+                        console.log(`🐳 Build response from ${message.deviceIP} (${message.hostname}): ${message.imageName} - ${message.success ? 'SUCCESS' : 'FAILED'}`);
                         
                         // Save image info to connected device
                         if (message.success) {
@@ -1102,6 +1112,7 @@ echo "✅ Auto installation completed!"
                     const deviceInfo = connectedDevices.get(clientIP);
                     if (deviceInfo && deviceInfo.info.deviceIP) {
                         const deviceIP = deviceInfo.info.deviceIP;
+                        const hostname = deviceInfo.info.hostname || 'Unknown';
                         
                         // Cleanup all mappings for this device
                         const keysToDelete = [];
@@ -1128,7 +1139,7 @@ echo "✅ Auto installation completed!"
                             }
                         });
                         
-                        console.log(`🖥️ Device disconnected: ${deviceIP}`);
+                        console.log(`📴 Device disconnected: ${deviceIP} (${hostname})`);
                     } else {
                         connectedDevices.delete(clientIP);
                         console.log(`🖥️ Unknown device disconnected: ${clientIP}`);
@@ -1159,6 +1170,7 @@ echo "✅ Auto installation completed!"
             console.log(`🔄 Or: curl -fsSL http://${SERVER_IP}:${SERVER_PORT}/auto-install | bash`);
             console.log(`💾 Device storage: ${DEVICES_DIR}/`);
             console.log(`📱 Devices loaded: ${savedDevices.size}`);
+            console.log(`🌐 Dynamic hostname support: enabled`);
         });
 
         process.on('SIGINT', () => {

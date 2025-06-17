@@ -368,9 +368,6 @@ KERNEL_VERSION_CLEAN=$(clean_json_string "$KERNEL_VERSION")
 DOCKER_VERSION_CLEAN=$(clean_json_string "$DOCKER_VERSION")
 PM2_VERSION_CLEAN=$(clean_json_string "$PM2_VERSION")
 
-echo "📋 JSON payload length: $(echo "$JSON_PAYLOAD" | wc -c)"
-echo "🔍 Checking for invalid characters..."
-
 JSON_PAYLOAD=$(cat << EOF
 {
   "deviceIP": "$DEVICE_IP",
@@ -398,8 +395,10 @@ curl -X POST http://192.168.1.64:8080/install-complete \
   || echo "⚠️  Failed to notify server"
 
 echo "✅ Setup complete!"
-echo "Device IP: $DEVICE_IP"
-echo "WebSocket client running with PM2"
-echo "Check status: sudo pm2 status"
+echo "📱 Device IP: $DEVICE_IP"
+echo "🖥️  Hostname: $HOSTNAME_CLEAN"  
+echo "🐳 Docker: $DOCKER_VERSION_CLEAN"
+echo "🔄 WebSocket client running with PM2"
+echo "🔍 Check status: sudo pm2 status"
 
 rm -f get-docker.sh

@@ -773,10 +773,10 @@
         function initServerInfo() {
             const serverIP = getServerIP();
             const port = window.location.port || '80';
-            document.getElementById('serverIP').textContent = `${serverIP}:${port}`;
-            document.getElementById('wsPort').textContent = `ws://${serverIP}:${port}`;
-            document.getElementById('autoInstallIP').textContent = `${serverIP}:${port}`;
-            document.getElementById('downloadIP').textContent = `${serverIP}:${port}`;
+            document.getElementById('serverIP').textContent = `${serverIP}${window.location.hostname !== 'localhost' ? '' : `:${port}`}`;
+            document.getElementById('wsPort').textContent = `ws://${serverIP}${window.location.hostname !== 'localhost' ? '' : `:${port}`}`;
+            document.getElementById('autoInstallIP').textContent = `${serverIP}${window.location.hostname !== 'localhost' ? '' : `:${port}`}`;
+            document.getElementById('downloadIP').textContent = `${serverIP}${window.location.hostname !== 'localhost' ? '' : `:${port}`}`;
         }
 
         // Terminal Functions
