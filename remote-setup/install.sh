@@ -66,7 +66,7 @@ const WebSocket = require('ws');
 const os = require('os');
 const { exec } = require('child_process');
 
-const SERVER_URL = 'ws://docker.server.s9s.ai:8080';
+const SERVER_URL = 'ws://192.168.1.64:8080';
 
 function getDeviceIP() {
     const interfaces = os.networkInterfaces();
@@ -133,7 +133,7 @@ function connect() {
     
     ws.on('open', async () => {
         console.log('✅ Connected! Device IP: ' + DEVICE_IP);
-        reconnectInterval = 5000; // Reset reconnect interval on successful connection
+        reconnectInterval = 5000;
         
         const systemInfo = await getSystemInfo();
         ws.send(JSON.stringify({
@@ -195,7 +195,6 @@ function connect() {
                 const tempDir = '/tmp/docker-build-' + Date.now();
                 const config = data.config || {};
                 
-                // Enhanced Dockerfile with configuration
                 const dockerfileContent = [
                     'FROM ' + data.baseImage,
                     'RUN apt-get update && apt-get install -y curl wget git vim nano htop stress-ng && rm -rf /var/lib/apt/lists/*',
@@ -225,7 +224,6 @@ function connect() {
                         fs.writeFileSync(dockerfilePath, dockerfileContent);
                         console.log('📝 Dockerfile created successfully');
                         
-                        // Build image
                         const buildCmd = 'cd ' + tempDir + ' && docker build -t ' + data.imageName + ' .';
                         console.log('🔨 Building image:', buildCmd);
                         
@@ -248,7 +246,6 @@ function connect() {
                             
                             console.log('✅ Image built successfully, starting container...');
                             
-                            // Run container with configuration
                             let runCmd = 'docker run -d';
                             if (config.ram) runCmd += ' --memory=' + config.ram + 'm';
                             if (config.cpu) runCmd += ' --cpus=' + config.cpu;
@@ -308,12 +305,12 @@ function connect() {
     ws.on('close', () => {
         console.log('❌ Disconnected. Reconnecting in ' + (reconnectInterval/1000) + 's...');
         setTimeout(connect, reconnectInterval);
-        reconnectInterval = Math.min(reconnectInterval * 1.5, 30000); // Max 30s
+        reconnectInterval = Math.min(reconnectInterval * 1.5, 30000);
     });
     
     ws.on('error', (err) => {
         console.log('🔄 Connection error:', err.code || err.message);
-        reconnectInterval = Math.min(reconnectInterval * 1.2, 15000); // Backoff on error
+        reconnectInterval = Math.min(reconnectInterval * 1.2, 15000);
     });
 }
 
@@ -368,9 +365,6 @@ KERNEL_VERSION_CLEAN=$(clean_json_string "$KERNEL_VERSION")
 DOCKER_VERSION_CLEAN=$(clean_json_string "$DOCKER_VERSION")
 PM2_VERSION_CLEAN=$(clean_json_string "$PM2_VERSION")
 
-echo "📋 JSON payload length: $(echo "$JSON_PAYLOAD" | wc -c)"
-echo "🔍 Checking for invalid characters..."
-
 JSON_PAYLOAD=$(cat << EOF
 {
   "deviceIP": "$DEVICE_IP",
@@ -392,7 +386,7 @@ EOF
 )
 
 echo "📤 Notifying server..."
-curl -X POST http://docker.server.s9s.ai:8080/install-complete \
+curl -X POST http://192.168.1.64:8080/install-complete \
   -H "Content-Type: application/json" \
   -d "$JSON_PAYLOAD" \
   || echo "⚠️  Failed to notify server"
