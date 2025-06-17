@@ -16,7 +16,7 @@ class Config {
             this.port = parseInt(process.env.DEV_PORT) || 8080;
         } else {
             this.host = process.env.PROD_DOMAIN || this.getLocalIP();
-            this.port = parseInt(process.env.PROD_PORT) || 80;
+            this.port = parseInt(process.env.PROD_PORT) || 8080;
         }
 
         // Allow override
@@ -54,8 +54,7 @@ class Config {
         if (this.isDevelopment) {
             return `${this.host}:${this.port}`;
         } else {
-            // Production: use domain without port if it's 80/443
-            return this.port === 80 || this.port === 443 ? this.host : `${this.host}:${this.port}`;
+            return this.host;
         }
     }
 
