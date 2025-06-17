@@ -1,42 +1,18 @@
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const http = require('http');
-
-// Lấy IP local
-function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (let iface of Object.values(interfaces)) {
-        for (let alias of iface) {
-            if (alias.family === 'IPv4' && !alias.internal) {
-                return alias.address;
-            }
-        }
-    }
-    return 'localhost';
-}
-
-// Determine server address based on context
-function getServerAddress() {
-    // This will be overridden by the actual hostname when serving
-    return process.env.SERVER_HOST || getLocalIP();
-}
-
-const SERVER_IP = getLocalIP();
-let SERVER_PORT = 8080;
-const SETUP_DIR = './remote-setup';
-const DEVICES_DIR = './devices';
+const config = require('./config');
 
 // Device storage functions
 function initDevicesDir() {
-    if (!fs.existsSync(DEVICES_DIR)) {
-        fs.mkdirSync(DEVICES_DIR);
+    if (!fs.existsSync(config.devicesDir)) {
+        fs.mkdirSync(config.devicesDir, { recursive: true });
     }
 }
 
 function saveDevice(deviceIP, deviceInfo) {
-    const deviceFile = path.join(DEVICES_DIR, `${deviceIP.replace(/\./g, '_')}.json`);
+    const deviceFile = path.join(config.devicesDir, `${deviceIP.replace(/\./g, '_')}.json`);
     const existingData = fs.existsSync(deviceFile) ? JSON.parse(fs.readFileSync(deviceFile, 'utf8')) : {};
     
     const deviceData = {
@@ -53,12 +29,12 @@ function saveDevice(deviceIP, deviceInfo) {
 
 function loadAllDevices() {
     const devices = new Map();
-    if (!fs.existsSync(DEVICES_DIR)) return devices;
+    if (!fs.existsSync(config.devicesDir)) return devices;
     
-    const files = fs.readdirSync(DEVICES_DIR).filter(f => f.endsWith('.json'));
+    const files = fs.readdirSync(config.devicesDir).filter(f => f.endsWith('.json'));
     files.forEach(file => {
         try {
-            const data = JSON.parse(fs.readFileSync(path.join(DEVICES_DIR, file), 'utf8'));
+            const data = JSON.parse(fs.readFileSync(path.join(config.devicesDir, file), 'utf8'));
             devices.set(data.ip, data);
         } catch (e) {
             console.log(`❌ Error loading device file ${file}:`, e.message);
@@ -73,7 +49,7 @@ function getAllDevices() {
     return loadAllDevices();
 }
 
-// Tìm port trống
+// Find free port if needed
 function findFreePort(startPort = 8080) {
     return new Promise((resolve) => {
         const server = require('net').createServer();
@@ -93,13 +69,15 @@ function findFreePort(startPort = 8080) {
     });
 }
 
-// Tạo client script content với dynamic server address
-function createClientScript(serverHost, port) {
+// Create client script with environment-aware configuration
+function createClientScript() {
+    const serverUrl = config.getWebSocketUrl();
+    
     return `const WebSocket = require('ws');
 const os = require('os');
 const { exec } = require('child_process');
 
-const SERVER_URL = 'ws://${serverHost}:${port}';
+const SERVER_URL = '${serverUrl}';
 
 function getDeviceIP() {
     const interfaces = os.networkInterfaces();
@@ -166,7 +144,7 @@ function connect() {
     
     ws.on('open', async () => {
         console.log('✅ Connected! Device IP: ' + DEVICE_IP);
-        reconnectInterval = 5000; // Reset reconnect interval on successful connection
+        reconnectInterval = 5000;
         
         const systemInfo = await getSystemInfo();
         ws.send(JSON.stringify({
@@ -228,7 +206,6 @@ function connect() {
                 const tempDir = '/tmp/docker-build-' + Date.now();
                 const config = data.config || {};
                 
-                // Enhanced Dockerfile with configuration
                 const dockerfileContent = [
                     'FROM ' + data.baseImage,
                     'RUN apt-get update && apt-get install -y curl wget git vim nano htop stress-ng && rm -rf /var/lib/apt/lists/*',
@@ -258,7 +235,6 @@ function connect() {
                         fs.writeFileSync(dockerfilePath, dockerfileContent);
                         console.log('📝 Dockerfile created successfully');
                         
-                        // Build image
                         const buildCmd = 'cd ' + tempDir + ' && docker build -t ' + data.imageName + ' .';
                         console.log('🔨 Building image:', buildCmd);
                         
@@ -281,7 +257,6 @@ function connect() {
                             
                             console.log('✅ Image built successfully, starting container...');
                             
-                            // Run container with configuration
                             let runCmd = 'docker run -d';
                             if (config.ram) runCmd += ' --memory=' + config.ram + 'm';
                             if (config.cpu) runCmd += ' --cpus=' + config.cpu;
@@ -341,21 +316,22 @@ function connect() {
     ws.on('close', () => {
         console.log('❌ Disconnected. Reconnecting in ' + (reconnectInterval/1000) + 's...');
         setTimeout(connect, reconnectInterval);
-        reconnectInterval = Math.min(reconnectInterval * 1.5, 30000); // Max 30s
+        reconnectInterval = Math.min(reconnectInterval * 1.5, 30000);
     });
     
     ws.on('error', (err) => {
         console.log('🔄 Connection error:', err.code || err.message);
-        reconnectInterval = Math.min(reconnectInterval * 1.2, 15000); // Backoff on error
+        reconnectInterval = Math.min(reconnectInterval * 1.2, 15000);
     });
 }
 
 connect();`;
 }
 
-// Tạo install script với dynamic server address
-function createInstallScript(serverHost, port) {
-    const clientScript = createClientScript(serverHost, port);
+// Create install script with environment-aware configuration
+function createInstallScript() {
+    const clientScript = createClientScript();
+    const serverUrl = config.getServerUrl();
     
     return `#!/bin/bash
 set -e
@@ -493,7 +469,7 @@ EOF
 )
 
 echo "📤 Notifying server..."
-curl -X POST http://${serverHost}:${port}/install-complete \\
+curl -X POST ${serverUrl}/install-complete \\
   -H "Content-Type: application/json" \\
   -d "$JSON_PAYLOAD" \\
   || echo "⚠️  Failed to notify server"
@@ -509,28 +485,36 @@ rm -f get-docker.sh
 `;
 }
 
-// Tạo setup files
-function createSetupFiles(port, hostname = null) {
-    if (!fs.existsSync(SETUP_DIR)) {
-        fs.mkdirSync(SETUP_DIR);
+// Create setup files
+function createSetupFiles() {
+    if (!fs.existsSync(config.setupDir)) {
+        fs.mkdirSync(config.setupDir, { recursive: true });
     }
     
-    const serverHost = hostname || SERVER_IP;
-    const installScript = createInstallScript(serverHost, port);
-    fs.writeFileSync(path.join(SETUP_DIR, 'install.sh'), installScript);
-    fs.chmodSync(path.join(SETUP_DIR, 'install.sh'), 0o755);
+    const installScript = createInstallScript();
+    fs.writeFileSync(path.join(config.setupDir, 'install.sh'), installScript);
+    fs.chmodSync(path.join(config.setupDir, 'install.sh'), 0o755);
     
-    console.log(`📁 Setup files created in ${SETUP_DIR}/ for ${serverHost}:${port}`);
+    console.log(`📁 Setup files created in ${config.setupDir}/ for ${config.getServerAddress()}`);
 }
 
-// Khởi tạo server
+// Initialize server
 async function init() {
     try {
-        SERVER_PORT = await findFreePort(8080);
-        console.log(`📡 Found free port: ${SERVER_PORT}`);
+        // Display current configuration
+        config.display();
+        
+        // Auto-find port if in development and port is busy
+        if (config.isDevelopment) {
+            const freePort = await findFreePort(config.port);
+            if (freePort !== config.port) {
+                console.log(`⚠️  Port ${config.port} busy, using ${freePort}`);
+                config.port = freePort;
+            }
+        }
         
         initDevicesDir();
-        createSetupFiles(SERVER_PORT);
+        createSetupFiles();
         
         const savedDevices = loadAllDevices();
         const connectedDevices = new Map();
@@ -540,12 +524,6 @@ async function init() {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-            
-            // Get current hostname for dynamic script generation
-            const currentHostname = req.headers.host ? req.headers.host.split(':')[0] : SERVER_IP;
-            const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
-            const serverAddress = isLocalhost ? `${SERVER_IP}:${SERVER_PORT}` : currentHostname;
-            const portDisplay = isLocalhost ? `:${SERVER_PORT}` : '';
             
             if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
                 const indexPath = path.join(__dirname, 'index.html');
@@ -558,7 +536,6 @@ async function init() {
                 }
             }
             else if (req.method === 'GET' && req.url === '/api/connected') {
-                // Legacy API - now returns real-time connected devices
                 const connected = {};
                 connectedDevices.forEach((deviceInfo, key) => {
                     const info = deviceInfo.info || {};
@@ -582,10 +559,9 @@ async function init() {
                 res.end(JSON.stringify(deviceArray));
             }
             else if (req.method === 'GET' && req.url === '/install.sh') {
-                // Generate dynamic install script based on current request hostname
-                const dynamicScript = createInstallScript(currentHostname, isLocalhost ? SERVER_PORT : (req.headers.host ? req.headers.host.split(':')[1] || '80' : '80'));
+                const installScript = createInstallScript();
                 res.writeHead(200, { 'Content-Type': 'text/plain' });
-                res.end(dynamicScript);
+                res.end(installScript);
             }
             else if (req.method === 'GET' && req.url === '/auto-install') {
                 const autoScript = `#!/bin/bash
@@ -619,7 +595,7 @@ if ! command_exists curl; then
 fi
 
 echo "📥 Downloading main install script..."
-curl -fsSL http://${serverAddress}${portDisplay}/install.sh | bash
+curl -fsSL ${config.getInstallUrl()} | bash
 
 echo "✅ Auto installation completed!"
 `;
@@ -628,7 +604,7 @@ echo "✅ Auto installation completed!"
             }
             else if (req.method === 'GET' && req.url.startsWith('/api/images/')) {
                 const deviceIP = req.url.split('/api/images/')[1];
-                const deviceFile = path.join(DEVICES_DIR, `${deviceIP.replace(/\./g, '_')}.json`);
+                const deviceFile = path.join(config.devicesDir, `${deviceIP.replace(/\./g, '_')}.json`);
                 
                 if (fs.existsSync(deviceFile)) {
                     const deviceData = JSON.parse(fs.readFileSync(deviceFile, 'utf8'));
@@ -828,13 +804,12 @@ echo "✅ Auto installation completed!"
 
         // WebSocket server
         const wss = new WebSocket.Server({ server });
-        const dashboardClients = new Set(); // Track dashboard clients
+        const dashboardClients = new Set();
 
         wss.on('connection', (ws, req) => {
             const clientIP = req.socket.remoteAddress?.replace('::ffff:', '') || 'unknown';
             console.log(`🔌 Client connected: ${clientIP}`);
             
-            // Initially treat as potential dashboard client
             ws.clientType = 'unknown';
             ws.clientIP = clientIP;
             
@@ -842,14 +817,12 @@ echo "✅ Auto installation completed!"
                 try {
                     const message = JSON.parse(data);
                     
-                    // Identify client type based on first message
                     if (ws.clientType === 'unknown') {
                         if (message.type === 'dashboard-init') {
                             ws.clientType = 'dashboard';
                             dashboardClients.add(ws);
                             console.log(`📊 Dashboard client identified: ${clientIP}`);
                             
-                            // Send current connected devices to new dashboard
                             const currentDevices = [];
                             const currentImages = {};
                             
@@ -863,19 +836,16 @@ echo "✅ Auto installation completed!"
                                         systemInfo: info
                                     });
                                     
-                                    // Send images for this device
                                     if (deviceInfo.images && deviceInfo.images.length > 0) {
                                         currentImages[info.deviceIP] = deviceInfo.images;
                                     }
                                 }
                             });
                             
-                            // Send device connections
                             currentDevices.forEach(deviceData => {
                                 ws.send(JSON.stringify(deviceData));
                             });
                             
-                            // Send images data
                             if (Object.keys(currentImages).length > 0) {
                                 ws.send(JSON.stringify({
                                     type: 'images-sync',
@@ -902,7 +872,6 @@ echo "✅ Auto installation completed!"
                         
                         const deviceInfo = { ws, info: { ...message, clientIP: clientIP } };
                         
-                        // Cleanup old entries for this device
                         const keysToDelete = [];
                         connectedDevices.forEach((info, key) => {
                             if (info.info && info.info.deviceIP === message.deviceIP) {
@@ -911,12 +880,10 @@ echo "✅ Auto installation completed!"
                         });
                         keysToDelete.forEach(key => connectedDevices.delete(key));
                         
-                        // Set new entries
                         connectedDevices.set(clientIP, deviceInfo);
                         connectedDevices.set(message.deviceIP, deviceInfo);
                         
-                        // Load existing images from file
-                        const deviceFile = path.join(DEVICES_DIR, `${message.deviceIP.replace(/\./g, '_')}.json`);
+                        const deviceFile = path.join(config.devicesDir, `${message.deviceIP.replace(/\./g, '_')}.json`);
                         if (fs.existsSync(deviceFile)) {
                             try {
                                 const deviceData = JSON.parse(fs.readFileSync(deviceFile, 'utf8'));
@@ -929,14 +896,12 @@ echo "✅ Auto installation completed!"
                             }
                         }
                         
-                        // If different, also create mapping with last octet
                         if (clientIP !== message.deviceIP) {
                             console.log(`🔗 Device mapping: ${clientIP} → ${message.deviceIP}`);
                             const lastOctet = message.deviceIP.split('.').pop();
                             connectedDevices.set(lastOctet, deviceInfo);
                         }
                         
-                        // Count unique devices
                         const uniqueDevices = new Set();
                         connectedDevices.forEach((info, key) => {
                             if (info.info && info.info.deviceIP && info.info.deviceIP.includes('.')) {
@@ -966,7 +931,6 @@ echo "✅ Auto installation completed!"
                             }
                         });
                         
-                        // Send to all dashboard clients only
                         const deviceConnectedMessage = JSON.stringify({
                             type: 'device-connected',
                             deviceIP: message.deviceIP,
@@ -978,7 +942,6 @@ echo "✅ Auto installation completed!"
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
                                 dashboardWs.send(deviceConnectedMessage);
                                 
-                                // Send images if available
                                 if (deviceInfo.images && deviceInfo.images.length > 0) {
                                     const imagesMessage = JSON.stringify({
                                         type: 'images-sync',
@@ -1042,7 +1005,6 @@ echo "✅ Auto installation completed!"
                     else if (message.type === 'build-response') {
                         console.log(`🐳 Build response from ${message.deviceIP} (${message.hostname}): ${message.imageName} - ${message.success ? 'SUCCESS' : 'FAILED'}`);
                         
-                        // Save image info to connected device
                         if (message.success) {
                             const imageInfo = {
                                 name: message.imageName,
@@ -1052,27 +1014,23 @@ echo "✅ Auto installation completed!"
                                 config: message.config || {}
                             };
                             
-                            // Update connectedDevices with image info
                             connectedDevices.forEach((deviceInfo, key) => {
                                 const info = deviceInfo.info || {};
                                 if (info.deviceIP === message.deviceIP) {
                                     if (!deviceInfo.images) {
                                         deviceInfo.images = [];
                                     }
-                                    // Remove old image with same name
                                     deviceInfo.images = deviceInfo.images.filter(img => img.name !== message.imageName);
                                     deviceInfo.images.push(imageInfo);
                                     console.log(`💾 Saved image to device memory: ${message.imageName} → ${message.deviceIP}`);
                                 }
                             });
                             
-                            // Also save to file for persistence
-                            const deviceFile = path.join(DEVICES_DIR, `${message.deviceIP.replace(/\./g, '_')}.json`);
+                            const deviceFile = path.join(config.devicesDir, `${message.deviceIP.replace(/\./g, '_')}.json`);
                             if (fs.existsSync(deviceFile)) {
                                 const deviceData = JSON.parse(fs.readFileSync(deviceFile, 'utf8'));
                                 deviceData.dockerImages = deviceData.dockerImages || [];
                                 
-                                // Remove old image with same name
                                 deviceData.dockerImages = deviceData.dockerImages.filter(img => img.name !== message.imageName);
                                 deviceData.dockerImages.push(imageInfo);
                                 
@@ -1114,7 +1072,6 @@ echo "✅ Auto installation completed!"
                         const deviceIP = deviceInfo.info.deviceIP;
                         const hostname = deviceInfo.info.hostname || 'Unknown';
                         
-                        // Cleanup all mappings for this device
                         const keysToDelete = [];
                         connectedDevices.forEach((info, key) => {
                             if (info.info && info.info.deviceIP === deviceIP) {
@@ -1129,7 +1086,6 @@ echo "✅ Auto installation completed!"
                             lastDisconnect: new Date().toISOString()
                         });
                         
-                        // Notify all dashboard clients
                         dashboardClients.forEach(dashboardWs => {
                             if (dashboardWs.readyState === dashboardWs.OPEN) {
                                 dashboardWs.send(JSON.stringify({
@@ -1145,12 +1101,10 @@ echo "✅ Auto installation completed!"
                         console.log(`🖥️ Unknown device disconnected: ${clientIP}`);
                     }
                 } else {
-                    // Unknown client type
                     connectedDevices.delete(clientIP);
                     console.log(`❓ Unknown client disconnected: ${clientIP}`);
                 }
                 
-                // Count unique devices
                 const uniqueDevices = new Set();
                 connectedDevices.forEach((info, key) => {
                     if (info.info && info.info.deviceIP && info.info.deviceIP.includes('.')) {
@@ -1162,15 +1116,15 @@ echo "✅ Auto installation completed!"
             });
         });
 
-        server.listen(SERVER_PORT, () => {
-            console.log(`🚀 Server running on http://${SERVER_IP}:${SERVER_PORT}`);
-            console.log(`📊 Dashboard: http://${SERVER_IP}:${SERVER_PORT}`);
-            console.log(`📁 Install script: curl -O http://${SERVER_IP}:${SERVER_PORT}/install.sh`);
-            console.log(`⚡ Auto install: bash <(wget -qO- http://${SERVER_IP}:${SERVER_PORT}/auto-install)`);
-            console.log(`🔄 Or: curl -fsSL http://${SERVER_IP}:${SERVER_PORT}/auto-install | bash`);
-            console.log(`💾 Device storage: ${DEVICES_DIR}/`);
+        server.listen(config.port, () => {
+            console.log(`🚀 Server running on ${config.getServerUrl()}`);
+            console.log(`📊 Dashboard: ${config.getServerUrl()}`);
+            console.log(`📁 Install script: ${config.getInstallUrl()}`);
+            console.log(`⚡ Auto install: ${config.getAutoInstallCommand()}`);
+            console.log(`🔄 Or: curl -fsSL ${config.getServerUrl()}/auto-install | bash`);
+            console.log(`💾 Device storage: ${config.devicesDir}/`);
             console.log(`📱 Devices loaded: ${savedDevices.size}`);
-            console.log(`🌐 Dynamic hostname support: enabled`);
+            console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
         });
 
         process.on('SIGINT', () => {
