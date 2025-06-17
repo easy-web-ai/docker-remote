@@ -1,125 +1,333 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Docker Setup Dashboard</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .status { display: inline-block; padding: 5px 10px; border-radius: 15px; font-size: 12px; margin-left: 10px; }
-        .online { background: #00ff00; color: #000; }
-        .offline { background: #ff0000; }
-        .card { background: #2a2a2a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-        .device-list { display: grid; gap: 15px; }
-        .device { background: #333; border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .device-info { flex: 1; }
-        .device-ip { font-size: 18px; font-weight: bold; }
-        .device-status { font-size: 12px; opacity: 0.8; margin-top: 5px; line-height: 1.4; }
-        .install-status { padding: 5px 15px; border-radius: 20px; font-size: 12px; align-self: flex-start; margin-top: 5px; }
-        .success { background: #4CAF50; }
-        .pending { background: #FF9800; }
-        .error { background: #f44336; }
-        .restart-btn { background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 15px; font-size: 12px; cursor: pointer; margin-top: 5px; }
-        .restart-btn:hover { background: #1976D2; }
-        .terminal-btn { background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 15px; font-size: 12px; cursor: pointer; margin-top: 5px; }
-        .terminal-btn:hover { background: #45a049; }
-        .build-btn { background: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 15px; font-size: 12px; cursor: pointer; margin-top: 5px; }
-        .build-btn:hover { background: #F57C00; }
-        .server-info { text-align: center; background: #1e3a8a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .copy-cmd { background: #374151; padding: 10px; border-radius: 5px; font-family: monospace; margin-top: 10px; word-break: break-all; }
-        .log { height: 200px; overflow-y: auto; background: #000; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; }
-        .log-entry { margin-bottom: 5px; }
-        .log-success { color: #4CAF50; }
-        .log-error { color: #f44336; }
-        .log-info { color: #2196F3; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .online {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .offline {
+            background: #ff0000;
+        }
+
+        .card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .device-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .device {
+            background: #333;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .device-info {
+            flex: 1;
+        }
+
+        .device-ip {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .device-status {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
+        .install-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            align-self: flex-start;
+            margin-top: 5px;
+        }
+
+        .success {
+            background: #4CAF50;
+        }
+
+        .pending {
+            background: #FF9800;
+        }
+
+        .error {
+            background: #f44336;
+        }
+
+        .restart-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .restart-btn:hover {
+            background: #1976D2;
+        }
+
+        .terminal-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .terminal-btn:hover {
+            background: #45a049;
+        }
+
+        .build-btn {
+            background: #FF9800;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .build-btn:hover {
+            background: #F57C00;
+        }
+
+        .server-info {
+            text-align: center;
+            background: #1e3a8a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .copy-cmd {
+            background: #374151;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-success {
+            color: #4CAF50;
+        }
+
+        .log-error {
+            color: #f44336;
+        }
+
+        .log-info {
+            color: #2196F3;
+        }
+
         /* Docker Images Styles */
-        .docker-images { margin-top: 10px; padding-top: 10px; border-top: 1px solid #555; }
-        .docker-images h4 { color: #FF9800; margin-bottom: 8px; font-size: 14px; }
-        .image-list { display: flex; flex-direction: column; gap: 5px; }
-        .image-item { background: #222; padding: 8px; border-radius: 4px; font-size: 11px; }
-        .image-name { color: #4CAF50; font-weight: bold; }
-        .image-details { color: #bbb; margin-top: 2px; }
-        .no-images { color: #888; font-style: italic; font-size: 11px; }
-        
+        .docker-images {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #555;
+        }
+
+        .docker-images h4 {
+            color: #FF9800;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .image-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .image-item {
+            background: #222;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .image-name {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .image-details {
+            color: #bbb;
+            margin-top: 2px;
+        }
+
+        .no-images {
+            color: #888;
+            font-style: italic;
+            font-size: 11px;
+        }
+
         /* Modal Styles */
-        .modal { 
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.8); 
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
             overflow: auto;
         }
-        .modal-content { 
-            background: #1a1a1a; 
-            margin: 3% auto; 
-            padding: 20px; 
-            border-radius: 10px; 
-            width: 90%; 
-            max-width: 900px; 
-            border: 1px solid #333; 
+
+        .modal-content {
+            background: #1a1a1a;
+            margin: 3% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 900px;
+            border: 1px solid #333;
             max-height: 90vh;
             overflow-y: auto;
         }
-        .modal-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 20px; 
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
-        .close { 
-            color: #aaa; 
-            font-size: 28px; 
-            font-weight: bold; 
-            cursor: pointer; 
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
         }
-        .close:hover { color: #fff; }
-        .terminal-input { 
-            width: 100%; 
-            padding: 10px; 
-            background: #333; 
-            color: #fff; 
-            border: 1px solid #555; 
-            border-radius: 5px; 
-            font-family: monospace; 
+
+        .close:hover {
+            color: #fff;
         }
+
+        .terminal-input {
+            width: 100%;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+
         .terminal-input option {
             background: #333;
             color: #fff;
         }
-        .terminal-output { 
-            background: #000; 
-            color: #0f0; 
-            padding: 15px; 
-            border-radius: 5px; 
-            font-family: monospace; 
-            font-size: 14px; 
-            max-height: 400px; 
-            overflow-y: auto; 
-            white-space: pre-wrap; 
-            margin: 10px 0; 
+
+        .terminal-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin: 10px 0;
         }
-        .terminal-controls { 
-            display: flex; 
-            gap: 10px; 
-            margin-top: 10px; 
+
+        .terminal-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
         }
-        .btn { 
-            padding: 8px 16px; 
-            border: none; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            font-size: 14px; 
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
         }
-        .btn-primary { background: #2196F3; color: white; }
-        .btn-secondary { background: #666; color: white; }
+
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #666;
+            color: white;
+        }
+
         .template-card {
             background: #333;
             border: 2px solid #555;
@@ -128,16 +336,19 @@
             cursor: pointer;
             transition: all 0.3s;
         }
+
         .template-card:hover {
             border-color: #FF9800;
             background: #444;
         }
+
         .template-card.selected {
             border-color: #4CAF50;
             background: #2a4a2a;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -182,7 +393,8 @@
                 <span class="close" onclick="closeTerminal()">&times;</span>
             </div>
             <div>
-                <input type="text" id="commandInput" class="terminal-input" placeholder="Enter command..." onkeypress="handleCommandKeyPress(event)">
+                <input type="text" id="commandInput" class="terminal-input" placeholder="Enter command..."
+                    onkeypress="handleCommandKeyPress(event)">
                 <div class="terminal-controls">
                     <button class="btn btn-primary" onclick="sendCommand()">Execute</button>
                     <button class="btn btn-secondary" onclick="clearOutput()">Clear</button>
@@ -201,7 +413,8 @@
             </div>
             <div>
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📦 Base Image Templates:</label>
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📦 Base Image
+                        Templates:</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                         <div class="template-card" onclick="selectTemplate('ubuntu:22.04', 'Ubuntu 22.04 LTS')">
                             <div style="font-weight: bold;">🟠 Ubuntu 22.04</div>
@@ -221,7 +434,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">🏷️ Image Name:</label>
@@ -237,25 +450,34 @@
                     <h4 style="margin-bottom: 10px; color: #FF9800;">⚙️ Resource Configuration</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                         <div>
-                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">💾 RAM (MB)</label>
-                            <input type="number" id="ramInput" class="terminal-input" placeholder="512" min="128" max="8192" style="padding: 5px; font-size: 12px;">
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">💾
+                                RAM (MB)</label>
+                            <input type="number" id="ramInput" class="terminal-input" placeholder="512" min="128"
+                                max="8192" style="padding: 5px; font-size: 12px;">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">🔧 CPU Cores</label>
-                            <input type="number" id="cpuInput" class="terminal-input" placeholder="1" min="0.5" max="8" step="0.5" style="padding: 5px; font-size: 12px;">
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">🔧
+                                CPU Cores</label>
+                            <input type="number" id="cpuInput" class="terminal-input" placeholder="1" min="0.5" max="8"
+                                step="0.5" style="padding: 5px; font-size: 12px;">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">💿 Disk (GB)</label>
-                            <input type="number" id="diskInput" class="terminal-input" placeholder="2" min="1" max="100" style="padding: 5px; font-size: 12px;">
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">💿
+                                Disk (GB)</label>
+                            <input type="number" id="diskInput" class="terminal-input" placeholder="2" min="1" max="100"
+                                style="padding: 5px; font-size: 12px;">
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                         <div>
-                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">🌐 Port Mapping</label>
-                            <input type="text" id="portInput" class="terminal-input" placeholder="8080:80" style="padding: 5px; font-size: 12px;">
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">🌐
+                                Port Mapping</label>
+                            <input type="text" id="portInput" class="terminal-input" placeholder="8080:80"
+                                style="padding: 5px; font-size: 12px;">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">🔗 Network Mode</label>
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">🔗
+                                Network Mode</label>
                             <select id="networkInput" class="terminal-input" style="padding: 5px; font-size: 12px;">
                                 <option value="bridge">Bridge</option>
                                 <option value="host">Host</option>
@@ -264,13 +486,14 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="terminal-controls">
                     <button class="btn btn-primary" onclick="startBuild()">🐳 Build & Run Container</button>
                     <button class="btn btn-secondary" onclick="clearBuildOutput()">Clear</button>
                 </div>
-                
-                <div id="buildOutput" class="terminal-output" style="margin-top: 10px;">Ready to build Docker images with custom configuration...\n</div>
+
+                <div id="buildOutput" class="terminal-output" style="margin-top: 10px;">Ready to build Docker images
+                    with custom configuration...\n</div>
             </div>
         </div>
     </div>
@@ -284,53 +507,67 @@
         let currentBuildDevice = null;
         let currentBuildHostname = null;
         let wsConnected = false;
-        
+
         function getServerIP() {
             return window.location.hostname || 'localhost';
         }
-        
+        function getWebSocketUrl() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const hostname = window.location.hostname;
+
+            // Nếu đang chạy trên HTTPS, sử dụng port 443 hoặc port hiện tại
+            // Nếu đang chạy trên HTTP, sử dụng port 8080 hoặc port hiện tại
+            let port;
+            if (window.location.protocol === 'https:') {
+                port = window.location.port || '443';
+            } else {
+                port = window.location.port || '8080';
+            }
+
+            return `${protocol}//${hostname}:${port}`;
+        }
+
         function connectWebSocket() {
-            const serverIP = getServerIP();
-            const port = window.location.port || '80';
-            ws = new WebSocket(`ws://${serverIP}:${port}`);
-            
+            const wsUrl = getWebSocketUrl();
+            ws = new WebSocket(wsUrl);
+
             ws.onopen = () => {
                 wsConnected = true;
                 updateStatus('online');
                 addLog('🔗 Connected to server', 'success');
-                
+
                 // Identify as dashboard client
                 ws.send(JSON.stringify({
                     type: 'dashboard-init',
                     timestamp: new Date().toISOString()
                 }));
-                
+
                 addLog('📊 Dashboard initialized', 'info');
             };
-            
+
             ws.onclose = () => {
                 wsConnected = false;
                 updateStatus('offline');
                 addLog('❌ Disconnected from server', 'error');
-                
+
                 // Clear all devices when WebSocket disconnects
                 devices.clear();
                 deviceImages.clear();
                 updateDeviceList();
-                
+
                 setTimeout(connectWebSocket, 3000);
             };
-            
+
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 handleMessage(data);
             };
-            
+
             ws.onerror = (error) => {
                 addLog('🔌 WebSocket error: ' + error, 'error');
             };
         }
-        
+
         function updateStatus(status) {
             const statusEl = document.getElementById('wsStatus');
             if (status === 'online') {
@@ -341,10 +578,10 @@
                 statusEl.textContent = 'Disconnected';
             }
         }
-        
+
         function handleMessage(data) {
             console.log('📨 Received message:', data.type, data);
-            
+
             if (data.type === 'install-complete') {
                 const device = {
                     ip: data.deviceIP,
@@ -355,13 +592,13 @@
                     systemInfo: data.systemInfo || {}
                 };
                 devices.set(data.deviceIP, device);
-                
+
                 addLog(`✅ Docker installed successfully on ${data.deviceIP} (${device.hostname})`, 'success');
                 updateDeviceList();
             }
             else if (data.type === 'device-connected') {
                 console.log('📱 Device connected event:', data.deviceIP, data.hostname);
-                
+
                 const device = {
                     ip: data.deviceIP,
                     hostname: data.hostname || 'Unknown',
@@ -371,33 +608,33 @@
                     systemInfo: data.systemInfo || {}
                 };
                 devices.set(data.deviceIP, device);
-                
+
                 // Initialize empty images array for new device if not exists
                 if (!deviceImages.has(data.deviceIP)) {
                     deviceImages.set(data.deviceIP, []);
                 }
-                
+
                 addLog(`📱 Device connected: ${data.deviceIP} (${device.hostname})`, 'info');
                 updateDeviceList();
             }
             else if (data.type === 'images-sync') {
                 console.log('🖼️ Images sync received:', data.images);
-                
+
                 // Restore images for all devices
                 Object.keys(data.images).forEach(deviceIP => {
                     deviceImages.set(deviceIP, data.images[deviceIP]);
                     console.log(`📦 Restored ${data.images[deviceIP].length} images for ${deviceIP}`);
                 });
-                
+
                 addLog(`🖼️ Restored Docker images for ${Object.keys(data.images).length} devices`, 'success');
                 updateDeviceList();
             }
             else if (data.type === 'device-disconnected') {
                 console.log('📴 Device disconnected event:', data.deviceIP);
-                
+
                 devices.delete(data.deviceIP);
                 deviceImages.delete(data.deviceIP);
-                
+
                 addLog(`📴 Device disconnected: ${data.deviceIP}`, 'error');
                 updateDeviceList();
             }
@@ -408,7 +645,7 @@
                     devices.set(data.deviceIP, device);
                     updateDeviceList();
                 }
-                
+
                 addLog(`🔄 Device ${data.deviceIP} (${data.hostname}) is restarting...`, 'info');
             }
             else if (data.type === 'terminal-response') {
@@ -418,22 +655,22 @@
                 handleBuildResponse(data);
             }
         }
-        
+
         function renderDockerImages(deviceIP) {
             const images = deviceImages.get(deviceIP) || [];
-            
+
             if (images.length === 0) {
                 return '<div class="docker-images"><h4>🐳 Docker Images</h4><div class="no-images">No images built yet</div></div>';
             }
-            
+
             let html = '<div class="docker-images"><h4>🐳 Docker Images (' + images.length + ')</h4><div class="image-list">';
-            
+
             images.forEach(image => {
                 const buildTime = image.buildTime ? new Date(image.buildTime).toLocaleString() : 'Unknown';
                 const config = image.config || {};
-                const configText = Object.keys(config).length > 0 ? 
+                const configText = Object.keys(config).length > 0 ?
                     `• ${config.ram || '512'}MB RAM, ${config.cpu || '1'} CPU${config.port ? ', Port:' + config.port : ''}` : '';
-                
+
                 html += `
                     <div class="image-item">
                         <div class="image-name">📦 ${image.name}</div>
@@ -444,47 +681,47 @@
                     </div>
                 `;
             });
-            
+
             html += '</div></div>';
             return html;
         }
-        
+
         function updateDeviceList() {
             const listEl = document.getElementById('deviceList');
             const countEl = document.getElementById('deviceCount');
-            
+
             console.log('🔄 Updating device list, devices count:', devices.size);
             console.log('📋 Current devices:', Array.from(devices.keys()));
-            
+
             if (devices.size === 0) {
                 listEl.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 20px;">Waiting for devices to connect...</div>';
                 countEl.textContent = '0';
                 return;
             }
-            
+
             let html = '';
             devices.forEach((device, ip) => {
                 const statusClass = device.status === 'connected' ? 'success' :
-                                  device.status === 'installed' ? 'pending' : 
-                                  device.status === 'restarting' ? 'pending' : 'error';
-                                  
+                    device.status === 'installed' ? 'pending' :
+                        device.status === 'restarting' ? 'pending' : 'error';
+
                 const statusText = device.status === 'connected' ? '🔌 Connected' :
-                                 device.status === 'installed' ? '✅ Installed' : 
-                                 device.status === 'restarting' ? '🔄 Restarting' :
-                                 '📴 Offline';
-                
+                    device.status === 'installed' ? '✅ Installed' :
+                        device.status === 'restarting' ? '🔄 Restarting' :
+                            '📴 Offline';
+
                 const lastSeen = device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'Unknown';
                 const systemInfo = device.systemInfo || {};
-                
-                const uptimeText = systemInfo.uptime ? 
+
+                const uptimeText = systemInfo.uptime ?
                     `${Math.floor(systemInfo.uptime / 3600)}h ${Math.floor((systemInfo.uptime % 3600) / 60)}m` : 'N/A';
-                
-                const memoryText = systemInfo.totalMem ? 
+
+                const memoryText = systemInfo.totalMem ?
                     `${systemInfo.freeMem || 'N/A'}GB / ${systemInfo.totalMem}GB` : 'N/A';
-                
-                const diskText = systemInfo.disk ? 
+
+                const diskText = systemInfo.disk ?
                     `${systemInfo.disk.used || 'N/A'} / ${systemInfo.disk.total || 'N/A'} (${systemInfo.disk.usePercent || 'N/A'})` : 'N/A';
-                
+
                 html += `
                     <div class="device">
                         <div class="device-info">
@@ -505,24 +742,24 @@
                             <div class="install-status ${statusClass}">
                                 ${statusText}
                             </div>
-                            ${device.status === 'connected' ? 
-                                `<div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            ${device.status === 'connected' ?
+                        `<div style="display: flex; gap: 5px; flex-wrap: wrap;">
                                     <button class="terminal-btn" onclick="openTerminal('${ip}', '${device.hostname || 'Unknown'}')">💻 Terminal</button>
                                     <button class="build-btn" onclick="openBuildImage('${ip}', '${device.hostname || 'Unknown'}')">🐳 Build</button>
                                     <button class="restart-btn" onclick="restartDevice('${ip}', '${device.hostname || 'Unknown'}')">🔄 Restart</button>
-                                </div>` : 
-                                device.status === 'installed' ? 
-                                '<div style="font-size: 11px; color: #888; margin-top: 5px;">📡 Connecting...</div>' :
-                                '<div style="font-size: 11px; color: #888; margin-top: 5px;">⏳ Offline</div>'}
+                                </div>` :
+                        device.status === 'installed' ?
+                            '<div style="font-size: 11px; color: #888; margin-top: 5px;">📡 Connecting...</div>' :
+                            '<div style="font-size: 11px; color: #888; margin-top: 5px;">⏳ Offline</div>'}
                         </div>
                     </div>
                 `;
             });
-            
+
             listEl.innerHTML = html;
             countEl.textContent = devices.size;
         }
-        
+
         function addLog(message, type = 'info') {
             const logEl = document.getElementById('log');
             const time = new Date().toLocaleTimeString();
@@ -532,7 +769,7 @@
             logEl.appendChild(entry);
             logEl.scrollTop = logEl.scrollHeight;
         }
-        
+
         function initServerInfo() {
             const serverIP = getServerIP();
             const port = window.location.port || '80';
@@ -541,79 +778,79 @@
             document.getElementById('autoInstallIP').textContent = `${serverIP}:${port}`;
             document.getElementById('downloadIP').textContent = `${serverIP}:${port}`;
         }
-        
+
         // Terminal Functions
         function openTerminal(deviceIP, hostname) {
             if (!devices.has(deviceIP) || devices.get(deviceIP).status !== 'connected') {
                 alert(`Device ${deviceIP} is not connected. Please wait for device to come online.`);
                 return;
             }
-            
+
             currentTerminalDevice = deviceIP;
             currentTerminalHostname = hostname;
-            
+
             document.getElementById('terminalTitle').textContent = `💻 Terminal - ${hostname} (${deviceIP})`;
             document.getElementById('terminalModal').style.display = 'block';
             document.getElementById('commandInput').focus();
         }
-        
+
         function closeTerminal() {
             document.getElementById('terminalModal').style.display = 'none';
             currentTerminalDevice = null;
             currentTerminalHostname = null;
         }
-        
+
         function handleCommandKeyPress(event) {
             if (event.key === 'Enter') {
                 sendCommand();
             }
         }
-        
+
         async function sendCommand() {
             const commandInput = document.getElementById('commandInput');
             const command = commandInput.value.trim();
-            
+
             if (!command || !currentTerminalDevice) return;
-            
+
             if (!devices.has(currentTerminalDevice) || devices.get(currentTerminalDevice).status !== 'connected') {
                 const output = document.getElementById('terminalOutput');
                 output.textContent += `❌ Device ${currentTerminalDevice} is no longer connected\n`;
                 output.scrollTop = output.scrollHeight;
                 return;
             }
-            
+
             const output = document.getElementById('terminalOutput');
             output.textContent += `$ ${command}\n`;
-            
+
             commandInput.value = '';
-            
+
             try {
                 const response = await fetch('/terminal-command', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         deviceIP: currentTerminalDevice,
                         command: command
                     })
                 });
-                
+
                 const result = await response.json();
                 if (!result.success) {
                     output.textContent += `❌ Error: ${result.message}\n`;
                 }
-                
+
                 output.scrollTop = output.scrollHeight;
             } catch (error) {
                 output.textContent += `❌ Error sending command: ${error.message}\n`;
                 output.scrollTop = output.scrollHeight;
             }
         }
-        
+
         function handleTerminalResponse(data) {
             if (data.deviceIP !== currentTerminalDevice) return;
-            
+
             const output = document.getElementById('terminalOutput');
-            
+
             if (data.error) {
                 output.textContent += `❌ Error: ${data.error}\n`;
             } else {
@@ -624,37 +861,37 @@
                     output.textContent += `🔴 ${data.stderr}`;
                 }
             }
-            
+
             output.textContent += '\n';
             output.scrollTop = output.scrollHeight;
-            
+
             addLog(`💻 Command executed on ${data.deviceIP}: ${data.command}`, 'info');
         }
-        
+
         function clearOutput() {
             document.getElementById('terminalOutput').textContent = 'Ready to execute commands...\n';
         }
-        
+
         // Build Functions
         function openBuildImage(deviceIP, hostname) {
             if (!devices.has(deviceIP) || devices.get(deviceIP).status !== 'connected') {
                 alert(`Device ${deviceIP} is not connected. Please wait for device to come online.`);
                 return;
             }
-            
+
             currentBuildDevice = deviceIP;
             currentBuildHostname = hostname;
-            
+
             document.getElementById('buildTitle').textContent = `🐳 Build Docker Image - ${hostname} (${deviceIP})`;
             document.getElementById('buildModal').style.display = 'block';
             document.getElementById('imageNameInput').focus();
         }
-        
+
         function closeBuildModal() {
             document.getElementById('buildModal').style.display = 'none';
             currentBuildDevice = null;
             currentBuildHostname = null;
-            
+
             // Clear all input fields
             document.getElementById('imageNameInput').value = '';
             document.getElementById('baseImageInput').value = '';
@@ -663,37 +900,37 @@
             document.getElementById('diskInput').value = '';
             document.getElementById('portInput').value = '';
             document.getElementById('networkInput').value = 'bridge';
-            
+
             document.querySelectorAll('.template-card').forEach(card => {
                 card.classList.remove('selected');
             });
         }
-        
+
         function selectTemplate(baseImage, templateName) {
             document.getElementById('baseImageInput').value = baseImage;
-            
+
             document.querySelectorAll('.template-card').forEach(card => {
                 card.classList.remove('selected');
             });
-            
+
             event.target.closest('.template-card').classList.add('selected');
-            
+
             const imageNameInput = document.getElementById('imageNameInput');
             if (!imageNameInput.value) {
                 const baseName = baseImage.split(':')[0].replace('/', '-');
                 imageNameInput.value = `${baseName}-custom:latest`;
             }
         }
-        
+
         async function startBuild() {
             const imageName = document.getElementById('imageNameInput').value.trim();
             const baseImage = document.getElementById('baseImageInput').value.trim();
-            
+
             if (!imageName || !baseImage || !currentBuildDevice) {
                 alert('Please fill in Image Name and Base Image fields');
                 return;
             }
-            
+
             if (!devices.has(currentBuildDevice) || devices.get(currentBuildDevice).status !== 'connected') {
                 alert(`Device ${currentBuildDevice} is not connected. Please wait for device to come online.`);
                 return;
@@ -707,51 +944,51 @@
                 port: document.getElementById('portInput').value.trim() || '',
                 network: document.getElementById('networkInput').value || 'bridge'
             };
-            
+
             const output = document.getElementById('buildOutput');
             output.textContent += `🐳 Building ${imageName} from ${baseImage}...\n`;
             output.textContent += `⚙️ Resources: ${config.ram}MB RAM, ${config.cpu} CPU, ${config.disk}GB Disk\n`;
             if (config.port) output.textContent += `🌐 Ports: ${config.port}\n`;
             output.textContent += `🔗 Network: ${config.network}\n\n`;
             output.scrollTop = output.scrollHeight;
-            
+
             try {
                 const response = await fetch('/build-image', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         deviceIP: currentBuildDevice,
                         imageName: imageName,
                         baseImage: baseImage,
                         config: config
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (!result.success) {
                     output.textContent += `❌ Error: ${result.message}\n`;
                 } else {
                     output.textContent += `⏳ Build started (ID: ${result.buildId})\n`;
                 }
-                
+
                 output.scrollTop = output.scrollHeight;
             } catch (error) {
                 output.textContent += `❌ Error starting build: ${error.message}\n`;
                 output.scrollTop = output.scrollHeight;
             }
         }
-        
+
         function handleBuildResponse(data) {
             if (data.deviceIP !== currentBuildDevice) return;
-            
+
             const output = document.getElementById('buildOutput');
-            
+
             if (data.success) {
                 output.textContent += `✅ Build completed successfully!\n`;
                 output.textContent += `🏷️ Image: ${data.imageName}\n`;
                 addLog(`🐳 Image built successfully on ${data.deviceIP}: ${data.imageName}`, 'success');
-                
+
                 // Add image to real-time storage
                 const images = deviceImages.get(data.deviceIP) || [];
                 const imageInfo = {
@@ -761,52 +998,52 @@
                     buildId: data.buildId,
                     config: data.config || {}
                 };
-                
+
                 // Remove old image with same name
                 const filteredImages = images.filter(img => img.name !== data.imageName);
                 filteredImages.push(imageInfo);
                 deviceImages.set(data.deviceIP, filteredImages);
-                
+
                 updateDeviceList();
             } else {
                 output.textContent += `❌ Build failed: ${data.error || 'Unknown error'}\n`;
                 addLog(`❌ Image build failed on ${data.deviceIP}: ${data.imageName}`, 'error');
             }
-            
+
             if (data.stdout) {
                 output.textContent += `📤 Output:\n${data.stdout}\n`;
             }
-            
+
             if (data.stderr) {
                 output.textContent += `🔴 Errors:\n${data.stderr}\n`;
             }
-            
+
             output.textContent += '\n';
             output.scrollTop = output.scrollHeight;
         }
-        
+
         function clearBuildOutput() {
             document.getElementById('buildOutput').textContent = 'Ready to build Docker images with custom configuration...\n';
         }
-        
+
         // Restart Function
         async function restartDevice(deviceIP, hostname) {
             if (!devices.has(deviceIP) || devices.get(deviceIP).status !== 'connected') {
                 alert(`Device ${deviceIP} is not connected. Please wait for device to come online.`);
                 return;
             }
-            
+
             if (!confirm(`Are you sure you want to restart ${hostname} (${deviceIP})?`)) {
                 return;
             }
-            
+
             try {
                 const response = await fetch('/restart-device', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ deviceIP })
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     addLog(`🔄 Restart command sent to ${deviceIP} (${hostname})`, 'info');
@@ -817,12 +1054,12 @@
                 addLog(`❌ Error sending restart command: ${error.message}`, 'error');
             }
         }
-        
+
         // Modal click outside to close
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             const terminalModal = document.getElementById('terminalModal');
             const buildModal = document.getElementById('buildModal');
-            
+
             if (event.target === terminalModal) {
                 closeTerminal();
             }
@@ -830,9 +1067,9 @@
                 closeBuildModal();
             }
         }
-        
+
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             console.log('🚀 Dashboard DOM loaded');
             initServerInfo();
             connectWebSocket();
@@ -840,4 +1077,5 @@
         });
     </script>
 </body>
+
 </html>
