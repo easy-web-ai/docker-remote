@@ -7,9 +7,15 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "dotenv": "^16.5.0",
     "ws": "^8.14.2"
   },
-  "keywords": ["docker", "remote", "websocket", "terminal"],
+  "keywords": [
+    "docker",
+    "remote",
+    "websocket",
+    "terminal"
+  ],
   "author": "",
   "license": "MIT"
 }
